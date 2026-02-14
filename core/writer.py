@@ -35,6 +35,13 @@ def write_csv_tables(
     pokupki_file = output_path / "pokupki.csv"
     prodagbi_file = output_path / "prodagbi.csv"
 
+    for i, row in enumerate(pokupki_rows, start=1):
+        row["journal_row_number"] = i
+
+    for i, row in enumerate(prodagbi_rows, start=1):
+        row["journal_row_number"] = i
+
+
     _write_csv(pokupki_file, pokupki_rows, pokupki_columns)
     _write_csv(prodagbi_file, prodagbi_rows, prodagbi_columns)
 
