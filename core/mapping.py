@@ -11,6 +11,28 @@ import pandas as pd
 from core.models import MappingResult
 
 
+TAX_BASE_COLUMNS = [
+    "base_20",
+    "base_9",
+    "base_reverse_charge_82",
+    "base_intra_community_acq",
+    "base_0_chapter3",
+    "base_0_intra_community_supply",
+    "base_0_other",
+    "base_services_21_2",
+    "base_69_2_eu",
+    "base_exempt",
+    "base_triangular",
+]
+
+VAT_COLUMNS = [
+    "vat_20",
+    "vat_9",
+    "vat_intra_community_and_82",
+    "vat_for_private_use",
+]
+
+
 @dataclass(slots=True)
 class _Target:
     table: str
@@ -83,17 +105,24 @@ def map_ledger_to_tax_tables(
             )
 
         if row_accumulators["prodagbi"]:
-            prodagbi_rows.append(
-                _build_output_row(
-                    table_name="prodagbi",
-                    schema=schema_by_table["prodagbi"],
-                    source_row=row,
-                    row_index=row_index,
-                    ledger_columns=ledger_columns,
-                    amount_values=row_accumulators["prodagbi"],
-                    warnings=warnings,
-                )
+            output_row = _build_output_row(
+                table_name="prodagbi",
+                schema=schema_by_table["prodagbi"],
+                source_row=row,
+                row_index=row_index,
+                ledger_columns=ledger_columns,
+                amount_values=row_accumulators["prodagbi"],
+                warnings=warnings,
             )
+
+            # compute totals as sums of base and VAT component columns
+            total_tax_base = sum(output_row.get(col, Decimal("0")) for col in TAX_BASE_COLUMNS)
+            total_vat = sum(output_row.get(col, Decimal("0")) for col in VAT_COLUMNS)
+
+            output_row["total_tax_base"] = total_tax_base
+            output_row["total_vat"] = total_vat
+
+            prodagbi_rows.append(output_row)
 
     return MappingResult(
         pokupki_rows=pokupki_rows,
