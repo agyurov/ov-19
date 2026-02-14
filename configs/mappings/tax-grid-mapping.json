@@ -96,7 +96,7 @@
       "targets": [
         {
           "table": "prodagbi",
-          "amount_column": "base_service_21_2",
+          "amount_column": "base_services_21_2",
           "sign": -1
         }
       ]
