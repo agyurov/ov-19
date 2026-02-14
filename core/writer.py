@@ -24,8 +24,8 @@ def write_csv_tables(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    pokupki_schema = schemas.get("pokupki_schema")
-    prodagbi_schema = schemas.get("prodagbi_schema")
+    pokupki_schema = schemas.get("pokupki")
+    prodagbi_schema = schemas.get("prodagbi")
 
     if not isinstance(pokupki_schema, dict):
         raise ValueError("Missing or invalid 'pokupki_schema' in schemas")
