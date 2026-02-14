@@ -320,7 +320,7 @@ def _validate_ledger_columns(ledger_columns: dict[str, Any]) -> None:
     required: dict[str, tuple[str, ...]] = {
         "company VAT": ("company_vat",),
         "counterparty VAT": ("counterparty_vat", "partner_vat"),
-        "tax_period": ("tax_period",),
+        "tax_period": ("tax_period", "tax_period_source_date"),
         "document type": ("document_type",),
         "document number": ("document_number", "purchase_ref", "sales_move_name"),
         "document date": ("document_date", "date"),

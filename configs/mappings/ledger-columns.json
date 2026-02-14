@@ -9,7 +9,7 @@
   "counterparty_vat": "partner_id/vat",
   "tax_tag_ids": "tax_tag_ids",
   "balance": "balance",
-  "tax_period": "date",
+  "tax_period_source_date": "date",
   "journal_type": "journal_id/type",
   "purchase_ref": "ref",
   "sales_move_name": "move_name",
