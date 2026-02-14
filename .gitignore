@@ -1,1 +1,3 @@
 core/__pycache__/
+*.csv
+smoke_test.py
