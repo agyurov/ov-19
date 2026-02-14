@@ -9,6 +9,8 @@ def build_deklar_row(
     prodagbi_rows: list[dict],
     schemas: dict,
     deklar_aggregation: dict,
+    taxpayer_name: str | None = None,
+    submitter_person: str | None = None,
 ) -> tuple[dict, list[str]]:
     deklar_schema = schemas.get("deklar")
     if not isinstance(deklar_schema, dict):
@@ -38,6 +40,15 @@ def build_deklar_row(
     _set_if_present(deklar_row, "vat_number", _first_available_value("vat_number", pokupki_rows, prodagbi_rows))
     _set_if_present(deklar_row, "tax_period", _first_available_value("tax_period", pokupki_rows, prodagbi_rows))
     _set_if_present(deklar_row, "branch_number", "0")
+
+    if taxpayer_name is not None:
+        taxpayer_name = taxpayer_name.strip()
+        if taxpayer_name:
+            _set_if_present(deklar_row, "taxpayer_name", taxpayer_name)
+    if submitter_person is not None:
+        submitter_person = submitter_person.strip()
+        if submitter_person:
+            _set_if_present(deklar_row, "submitter_person", submitter_person)
 
     rules = deklar_aggregation.get("field_rules") if isinstance(deklar_aggregation, dict) else None
     if isinstance(rules, list):
