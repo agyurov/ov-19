@@ -113,6 +113,12 @@ def _build_output_row(
 ) -> dict[str, Any]:
     output = _schema_defaults(schema)
 
+    # Hardcoded description per accountant requirement
+    if table_name == "pokupki":
+        output["goods_or_service_description"] = "покупка на стока/услуга"
+    elif table_name == "prodagbi":
+        output["goods_or_service_description"] = "продажба на стока/услуга"
+
     output["vat_number"] = _as_text(source_row.get(ledger_columns.get("company_vat", "")))
 
     tax_period_date = source_row.get("_tax_period_date")
