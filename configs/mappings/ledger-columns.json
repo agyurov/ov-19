@@ -11,10 +11,10 @@
   "balance": "balance",
   "tax_period_source_date": "date",
   "journal_type": "journal_id/type",
-  "purchase_ref": "ref",
+  "purchase_doc_number": "ref",
   "sales_move_name": "move_name",
   "document_type": "move_id/l10n_bg_document_type",
   "document_date": "invoice_date",
   "posting_date": "date",
-  "document_number": "move_name"
+  "sales_doc_number": "move_name"
 }

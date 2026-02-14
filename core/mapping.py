@@ -72,6 +72,7 @@ def map_ledger_to_tax_tables(
         if row_accumulators["pokupki"]:
             pokupki_rows.append(
                 _build_output_row(
+                    table_name="pokupki",
                     schema=schema_by_table["pokupki"],
                     source_row=row,
                     row_index=row_index,
@@ -84,6 +85,7 @@ def map_ledger_to_tax_tables(
         if row_accumulators["prodagbi"]:
             prodagbi_rows.append(
                 _build_output_row(
+                    table_name="prodagbi",
                     schema=schema_by_table["prodagbi"],
                     source_row=row,
                     row_index=row_index,
@@ -101,6 +103,7 @@ def map_ledger_to_tax_tables(
 
 
 def _build_output_row(
+    table_name: str,
     schema: dict[str, Any],
     source_row: pd.Series,
     row_index: Any,
@@ -125,7 +128,11 @@ def _build_output_row(
     if warnings is not None and not re.match(r"^(\d{2})", raw_document_type_text):
         warnings.append(f"Row {row_index}: unrecognized document_type '{raw_document_type}'")
 
-    output["document_number"] = _as_text(source_row.get(ledger_columns.get("document_number", "")))
+    output["document_number"] = _resolve_document_number(
+        source_row=source_row,
+        table_name=table_name,
+        ledger_columns=ledger_columns,
+    )
 
     document_date = source_row.get("_document_date")
     output["document_date"] = document_date.isoformat() if isinstance(document_date, date) else ""
@@ -139,6 +146,40 @@ def _build_output_row(
         output[amount_column] = value
 
     return output
+
+
+def _resolve_document_number(
+    source_row: pd.Series,
+    table_name: str,
+    ledger_columns: dict[str, Any],
+) -> str:
+    # Odoo can store purchase numbers in `ref` and sales numbers in `move_name`,
+    # so we resolve per tax table while keeping a shared output field name.
+    if table_name == "pokupki":
+        candidates = (
+            "purchase_doc_number",
+            "purchase_ref",
+            "document_number",
+            "sales_move_name",
+        )
+    elif table_name == "prodagbi":
+        candidates = (
+            "sales_doc_number",
+            "document_number",
+            "sales_move_name",
+            "purchase_ref",
+        )
+    else:
+        candidates = ("document_number", "sales_move_name", "purchase_ref")
+
+    for key in candidates:
+        column_name = ledger_columns.get(key)
+        if isinstance(column_name, str) and column_name.strip():
+            value = _as_text(source_row.get(column_name))
+            if value:
+                return value
+
+    return ""
 
 
 def _schema_defaults(schema: dict[str, Any]) -> dict[str, Any]:
