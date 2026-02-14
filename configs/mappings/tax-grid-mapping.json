@@ -21,18 +21,182 @@
     "sort_tags_canonically": true
   },
   "tags": {
-    "30": {
-      "label": "Example sales 20% base",
+    "11": {
+      "label": "",
       "targets": [
         {
           "table": "prodagbi",
           "amount_column": "base_20",
+          "sign": -1
+        }
+      ]
+    },
+    "12_1": {
+      "label": "",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_intra_community_acq",
           "sign": 1
+        }
+      ]
+    },
+    "12_2": {
+      "label": "",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_reverse_charge_82",
+          "sign": 1
+        }
+      ]
+    },
+    "13": {
+      "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_9",
+          "sign": -1
+        }
+      ]
+    },
+    "14": {
+      "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_0_chapter3",
+          "sign": -1
+        }
+      ]
+    },
+    "15": {
+      "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_0_intra_community_supply",
+          "sign": -1
+        }
+      ]
+    },
+    "16": {
+      "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_0_other",
+          "sign": -1
+        }
+      ]
+    },
+    "17": {
+      "label": "",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_service_21_2",
+          "sign": -1
+        }
+      ]
+    },
+    "18": {
+      "label": "",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_69_2_eu",
+          "sign": -1
+        }
+      ]
+    },
+    "19": {
+      "label": "",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "base_exempt",
+          "sign": -1
+        }
+      ]
+    },
+    "19rc": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "21": {
+      "label": "",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "vat_20",
+          "sign": -1
         }
       ]
     },
     "22": {
       "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "vat_intra_community_and_82",
+          "sign": -1
+        }
+      ]
+    },
+    "23": {
+      "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "vat_for_private_use",
+          "sign": -1
+        }
+      ]
+    },
+    "24": {
+      "label": "Example purchase full credit VAT",
+      "targets": [
+        {
+          "table": "prodagbi",
+          "amount_column": "vat_9",
+          "sign": -1
+        }
+      ]
+    },
+    "30": {
+      "label": "Example sales 20% base",
+      "targets": [
+        {
+          "table": "pokupki",
+          "amount_column": "base_and_vat_no_credit",
+          "sign": 1
+        }
+      ]
+    },
+    "31": {
+      "label": "",
+      "targets": [
+        {
+          "table": "pokupki",
+          "amount_column": "base_full_credit",
+          "sign": 1
+        }
+      ]
+    },
+    "32": {
+      "label": "",
+      "targets": [
+        {
+          "table": "pokupki",
+          "amount_column": "base_partial_credit",
+          "sign": 1
+        }
+      ]
+    },
+    "41": {
+      "label": "",
       "targets": [
         {
           "table": "pokupki",
@@ -41,45 +205,15 @@
         }
       ]
     },
-    "11": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "12_1": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "12_2": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "17": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "18": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "19": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "19rc": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "21": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "31": {
-      "label": "UNMAPPED",
-      "targets": []
-    },
-    "41": {
-      "label": "UNMAPPED",
-      "targets": []
+    "42": {
+      "label": "",
+      "targets": [
+        {
+          "table": "pokupki",
+          "amount_column": "vat_partial_credit",
+          "sign": 1
+        }
+      ]
     }
   }
 }
