@@ -82,6 +82,42 @@ def write_txt_tables(
     }, warnings
 
 
+def write_deklar_csv(
+    deklar_row: dict[str, Any],
+    schemas: dict[str, Any],
+    output_dir: str | Path,
+) -> str:
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    deklar_schema = schemas.get("deklar")
+    if not isinstance(deklar_schema, dict):
+        raise ValueError("Missing or invalid 'deklar' schema in schemas")
+
+    deklar_columns = _schema_field_names(deklar_schema)
+    deklar_file = output_path / "deklar.csv"
+    _write_csv(deklar_file, [deklar_row], deklar_columns)
+    return str(deklar_file)
+
+
+def write_deklar_txt(
+    deklar_row: dict[str, Any],
+    schemas: dict[str, Any],
+    output_dir: str | Path,
+) -> tuple[str, list[str]]:
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    deklar_schema = schemas.get("deklar")
+    if not isinstance(deklar_schema, dict):
+        raise ValueError("Missing or invalid 'deklar' schema in schemas")
+
+    warnings: list[str] = []
+    deklar_file = output_path / "deklar.txt"
+    _write_txt_table(deklar_file, [deklar_row], deklar_schema, "deklar", warnings)
+    return str(deklar_file), warnings
+
+
 def _schema_field_names(schema: dict[str, Any]) -> list[str]:
     fields = schema.get("fields", [])
     if not isinstance(fields, list):
