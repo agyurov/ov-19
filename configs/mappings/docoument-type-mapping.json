@@ -1,0 +1,9 @@
+{
+    "config_type": "document_type_mapping",
+    "config_version": 1,
+    "default_behavior": "take_leading_two_digits",
+    "map": {
+        "01 - Invoice": "01",
+        "02 - Credit Note": "02"
+    }
+}
