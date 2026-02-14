@@ -137,7 +137,11 @@ def _build_output_row(
     document_date = source_row.get("_document_date")
     output["document_date"] = document_date.isoformat() if isinstance(document_date, date) else ""
 
-    output["counterparty_vat"] = _as_text(source_row.get(ledger_columns.get("counterparty_vat", "")))
+    raw_counterparty_vat = source_row.get(ledger_columns.get("counterparty_vat", "")) or ""
+    cleaned_counterparty_vat = str(raw_counterparty_vat).strip()
+    if not cleaned_counterparty_vat:
+        cleaned_counterparty_vat = "9999999999999"
+    output["counterparty_vat"] = cleaned_counterparty_vat
 
     counterparty_name_column = ledger_columns.get("partner_name")
     output["counterparty_name"] = _as_text(source_row.get(counterparty_name_column or ""))
