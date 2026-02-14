@@ -102,6 +102,20 @@ def build_deklar_row(
 
             deklar_row[target_field] = Decimal(len(distinct_documents))
 
+    # compute deklar sales totals from prodagbi totals
+    sales_total_tax_base = Decimal("0")
+    sales_total_vat = Decimal("0")
+    for row in prodagbi_rows:
+        if not isinstance(row, dict):
+            continue
+        sales_total_tax_base += _to_decimal(row.get("total_tax_base"))
+        sales_total_vat += _to_decimal(row.get("total_vat"))
+
+    if "sales_total_tax_base" in deklar_row:
+        deklar_row["sales_total_tax_base"] = sales_total_tax_base
+    if "sales_total_vat" in deklar_row:
+        deklar_row["sales_total_vat"] = sales_total_vat
+
     if "vat_due" in deklar_row and "vat_refundable" in deklar_row:
         delta = _to_decimal(deklar_row.get("sales_total_vat")) - _to_decimal(deklar_row.get("total_tax_credit"))
         deklar_row["vat_due"] = max(delta, Decimal("0"))
