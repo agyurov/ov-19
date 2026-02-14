@@ -1,4 +1,6 @@
 {
+    "config_type": "prodagbi",
+    "config_version": 1,
     "schema_name": "prodagbi_schema",
     "file_encoding": "cp1251",
     "line_length": 424,

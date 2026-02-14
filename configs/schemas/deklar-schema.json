@@ -1,4 +1,6 @@
 {
+    "config_type": "deklar",
+    "config_version": 1,
     "schema_name": "deklar_schema",
     "file_encoding": "cp1251",
     "line_length": 590,

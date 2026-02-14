@@ -1,4 +1,6 @@
 {
+    "config_type": "pokupki",
+    "config_version": 1,
     "schema_name": "pokupki_schema",
     "file_encoding": "cp1251",
     "line_length": 274,
