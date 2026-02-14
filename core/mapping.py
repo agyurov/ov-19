@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+import re
 from typing import Any
 
 import pandas as pd
@@ -73,8 +74,10 @@ def map_ledger_to_tax_tables(
                 _build_output_row(
                     schema=schema_by_table["pokupki"],
                     source_row=row,
+                    row_index=row_index,
                     ledger_columns=ledger_columns,
                     amount_values=row_accumulators["pokupki"],
+                    warnings=warnings,
                 )
             )
 
@@ -83,8 +86,10 @@ def map_ledger_to_tax_tables(
                 _build_output_row(
                     schema=schema_by_table["prodagbi"],
                     source_row=row,
+                    row_index=row_index,
                     ledger_columns=ledger_columns,
                     amount_values=row_accumulators["prodagbi"],
+                    warnings=warnings,
                 )
             )
 
@@ -98,8 +103,10 @@ def map_ledger_to_tax_tables(
 def _build_output_row(
     schema: dict[str, Any],
     source_row: pd.Series,
+    row_index: Any,
     ledger_columns: dict[str, Any],
     amount_values: dict[str, Decimal],
+    warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     output = _schema_defaults(schema)
 
@@ -110,7 +117,14 @@ def _build_output_row(
         tax_period_date.strftime("%Y%m") if isinstance(tax_period_date, date) else ""
     )
 
-    output["document_type"] = _as_text(source_row.get(ledger_columns.get("document_type", "")))
+    raw_document_type = source_row.get(ledger_columns.get("document_type", ""))
+    raw_document_type_text = _as_text(raw_document_type)
+    normalized_document_type = _normalize_document_type(raw_document_type)
+    output["document_type"] = normalized_document_type
+
+    if warnings is not None and not re.match(r"^(\d{2})", raw_document_type_text):
+        warnings.append(f"Row {row_index}: unrecognized document_type '{raw_document_type}'")
+
     output["document_number"] = _as_text(source_row.get(ledger_columns.get("document_number", "")))
 
     document_date = source_row.get("_document_date")
@@ -177,3 +191,15 @@ def _as_decimal(value: Any) -> Decimal | None:
     if isinstance(value, Decimal):
         return value
     return Decimal(str(value))
+
+
+def _normalize_document_type(value: Any) -> str:
+    text = _as_text(value)
+    if not text:
+        return ""
+
+    match = re.match(r"^(\d{2})", text)
+    if match:
+        return match.group(1)
+
+    return text
