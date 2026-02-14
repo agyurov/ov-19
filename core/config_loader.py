@@ -7,8 +7,6 @@ from typing import Any
 
 SUPPORTED_CONFIG_VERSION = 1
 REQUIRED_SCHEMA_FIELD_KEYS = {"internal_name", "type", "required"}
-ALLOWED_SCHEMA_TABLES = {"pokupki", "prodagbi", "deklar"}
-
 
 class ConfigError(Exception):
     """Raised when configuration files are invalid."""
@@ -85,22 +83,40 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _collect_schemas(loaded_by_type: dict[str, list[dict[str, Any]]]) -> dict[str, dict[str, Any]]:
     schema_by_table: dict[str, dict[str, Any]] = {}
-    for config_type, entries in loaded_by_type.items():
-        if config_type not in ALLOWED_SCHEMA_TABLES:
-            continue
 
-        if len(entries) != 1:
-            raise ConfigError(
-                f"Expected exactly one '{config_type}' schema config, found {len(entries)}"
-            )
+    for entries in loaded_by_type.values():
+        for entry in entries:
+            schema_key = _schema_key_from_path(Path(entry["_path"]))
+            if schema_key is None:
+                continue
 
-        schema_by_table[config_type] = entries[0]
+            if schema_key in schema_by_table:
+                raise ConfigError(
+                    f"Duplicate schema config for '{schema_key}': "
+                    f"{schema_by_table[schema_key]['_path']} and {entry['_path']}"
+                )
 
-    missing = sorted(ALLOWED_SCHEMA_TABLES - schema_by_table.keys())
-    if missing:
-        raise ConfigError(f"Missing required schema config(s): {', '.join(missing)}")
+            schema_by_table[schema_key] = entry
+
+    if not schema_by_table:
+        raise ConfigError("No schema configs found in configs/schemas/*.json")
 
     return schema_by_table
+
+
+def _schema_key_from_path(path: Path) -> str | None:
+    if path.parent.name != "schemas":
+        return None
+
+    suffix = "-schema.json"
+    if not path.name.endswith(suffix):
+        return None
+
+    key = path.name[: -len(suffix)]
+    if not key:
+        raise ConfigError(f"{path}: schema filename must include a non-empty prefix before '{suffix}'")
+
+    return key
 
 
 def _get_single_config(
