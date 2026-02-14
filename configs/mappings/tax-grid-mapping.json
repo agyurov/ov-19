@@ -21,35 +21,65 @@
     "sort_tags_canonically": true
   },
   "tags": {
-    "PUT_TAG_CODE_HERE": {
-      "label": "Human readable description of this tag",
-      "notes": "Optional notes for accountants/devs",
+    "30": {
+      "label": "Example sales 20% base",
       "targets": [
         {
-          "table": "pokupki",
-          "amount_column": "base_full_credit",
-          "label": "ДО с право на пълен данъчен кредит",
-          "sign": 1,
-          "notes": "Optional target-level notes"
+          "table": "prodagbi",
+          "amount_column": "base_20",
+          "sign": 1
         }
       ]
     },
-    "PUT_ANOTHER_TAG": {
-      "label": "Another tag",
+    "22": {
+      "label": "Example purchase full credit VAT",
       "targets": [
         {
           "table": "pokupki",
           "amount_column": "vat_full_credit",
-          "label": "ДДС с право на пълен данъчен кредит",
           "sign": 1
-        },
-        {
-          "table": "prodagbi",
-          "amount_column": "base_20",
-          "label": "ДО на облагаемите доставки със ставка 20%",
-          "sign": -1
         }
       ]
+    },
+    "11": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "12_1": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "12_2": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "17": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "18": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "19": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "19rc": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "21": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "31": {
+      "label": "UNMAPPED",
+      "targets": []
+    },
+    "41": {
+      "label": "UNMAPPED",
+      "targets": []
     }
   }
 }
