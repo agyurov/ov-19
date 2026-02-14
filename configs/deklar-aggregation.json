@@ -1,0 +1,103 @@
+{
+    "config_type": "deklar_aggregation",
+    "config_version": 1,
+    "description": "Declarative aggregation rules for generating deklar output from pokupki and prodagbi tables. v1 supports only sum and subtraction expressions.",
+    "document_count_rules": {
+        "sales_document_count": {
+            "source_table": "prodagbi",
+            "distinct_key_fields": [
+                "document_type",
+                "document_number",
+                "document_date",
+                "counterparty_vat"
+            ],
+            "note": "Provisional rule. Awaiting accountant confirmation."
+        },
+        "purchases_document_count": {
+            "source_table": "pokupki",
+            "distinct_key_fields": [
+                "document_type",
+                "document_number",
+                "document_date",
+                "counterparty_vat"
+            ],
+            "note": "Provisional rule. Awaiting accountant confirmation."
+        }
+    },
+    "field_rules": [
+        {
+            "target_field": "sales_total_tax_base",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "amount_tax_base_standard"
+                    },
+                    {
+                        "table": "prodagbi",
+                        "field": "amount_tax_base_reduced"
+                    }
+                ]
+            },
+            "note": "Example placeholder rule. Replace with real НАП mapping."
+        },
+        {
+            "target_field": "sales_total_vat",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "amount_vat_standard"
+                    },
+                    {
+                        "table": "prodagbi",
+                        "field": "amount_vat_reduced"
+                    }
+                ]
+            }
+        },
+        {
+            "target_field": "purchases_total_vat_credit",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "pokupki",
+                        "field": "amount_vat_deductible"
+                    }
+                ]
+            }
+        },
+        {
+            "target_field": "vat_payable",
+            "expression": {
+                "op": "subtract",
+                "left": {
+                    "op": "sum",
+                    "sources": [
+                        {
+                            "table": "prodagbi",
+                            "field": "amount_vat_standard"
+                        },
+                        {
+                            "table": "prodagbi",
+                            "field": "amount_vat_reduced"
+                        }
+                    ]
+                },
+                "right": {
+                    "op": "sum",
+                    "sources": [
+                        {
+                            "table": "pokupki",
+                            "field": "amount_vat_deductible"
+                        }
+                    ]
+                }
+            },
+            "note": "Example VAT payable calculation."
+        }
+    ]
+}
