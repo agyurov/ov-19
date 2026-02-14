@@ -1,3 +1,5 @@
 core/__pycache__/
 *.csv
 smoke_test.py
+out_smoke/
+validate_txt_agaisnt_schema.py
