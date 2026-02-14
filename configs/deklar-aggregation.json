@@ -1,7 +1,7 @@
 {
     "config_type": "deklar_aggregation",
     "config_version": 1,
-    "description": "Declarative aggregation rules for generating deklar output from pokupki and prodagbi tables. v1 supports only sum and subtraction expressions.",
+    "description": "VATTool v1 deklar aggregation rules. Expressions are declarative and allow only sum and subtract.",
     "document_count_rules": {
         "sales_document_count": {
             "source_table": "prodagbi",
@@ -32,15 +32,11 @@
                 "sources": [
                     {
                         "table": "prodagbi",
-                        "field": "amount_tax_base_standard"
-                    },
-                    {
-                        "table": "prodagbi",
-                        "field": "amount_tax_base_reduced"
+                        "field": "total_tax_base"
                     }
                 ]
             },
-            "note": "Example placeholder rule. Replace with real НАП mapping."
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
         {
             "target_field": "sales_total_vat",
@@ -49,29 +45,27 @@
                 "sources": [
                     {
                         "table": "prodagbi",
-                        "field": "amount_vat_standard"
-                    },
-                    {
-                        "table": "prodagbi",
-                        "field": "amount_vat_reduced"
+                        "field": "total_vat"
                     }
                 ]
-            }
+            },
+            "note": "Fill 01-20 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
         {
-            "target_field": "purchases_total_vat_credit",
+            "target_field": "total_tax_credit",
             "expression": {
                 "op": "sum",
                 "sources": [
                     {
                         "table": "pokupki",
-                        "field": "amount_vat_deductible"
+                        "field": "vat_full_credit"
                     }
                 ]
-            }
+            },
+            "note": "Total tax credit derived from pokupki (placeholder source field name; adjust to match pokupki schema)."
         },
         {
-            "target_field": "vat_payable",
+            "target_field": "vat_due",
             "expression": {
                 "op": "subtract",
                 "left": {
@@ -79,11 +73,7 @@
                     "sources": [
                         {
                             "table": "prodagbi",
-                            "field": "amount_vat_standard"
-                        },
-                        {
-                            "table": "prodagbi",
-                            "field": "amount_vat_reduced"
+                            "field": "total_vat"
                         }
                     ]
                 },
@@ -92,12 +82,37 @@
                     "sources": [
                         {
                             "table": "pokupki",
-                            "field": "amount_vat_deductible"
+                            "field": "vat_full_credit"
                         }
                     ]
                 }
             },
-            "note": "Example VAT payable calculation."
+            "note": "VAT due = sales_total_vat - total_tax_credit (must be >= 0; enforcement is runtime)."
+        },
+        {
+            "target_field": "vat_refundable",
+            "expression": {
+                "op": "subtract",
+                "left": {
+                    "op": "sum",
+                    "sources": [
+                        {
+                            "table": "prodagbi",
+                            "field": "total_vat"
+                        }
+                    ]
+                },
+                "right": {
+                    "op": "sum",
+                    "sources": [
+                        {
+                            "table": "pokupki",
+                            "field": "vat_full_credit"
+                        }
+                    ]
+                }
+            },
+            "note": "VAT refundable uses same formula; runtime will place negative into refundable and 0 into due (implementation rule)."
         }
     ]
 }
