@@ -52,6 +52,45 @@ def build_deklar_row(
 
             deklar_row[target_field] = _evaluate_expression(expression, pokupki_rows, prodagbi_rows)
 
+    document_count_rules = deklar_aggregation.get("document_count_rules", {}) if isinstance(deklar_aggregation, dict) else {}
+    if isinstance(document_count_rules, dict):
+        for target_field, rule in document_count_rules.items():
+            if not isinstance(target_field, str) or not isinstance(rule, dict):
+                continue
+
+            source_table = rule.get("source_table")
+            distinct_key_fields = rule.get("distinct_key_fields")
+            if not isinstance(source_table, str) or not isinstance(distinct_key_fields, list):
+                continue
+
+            if source_table == "prodagbi":
+                rows = prodagbi_rows
+            elif source_table == "pokupki":
+                rows = pokupki_rows
+            else:
+                warnings.append(
+                    f"document_count_rules[{target_field}] references unknown source_table '{source_table}'"
+                )
+                continue
+
+            distinct_documents: set[tuple[str, ...]] = set()
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+
+                key: list[str] = []
+                for field_name in distinct_key_fields:
+                    if not isinstance(field_name, str):
+                        key.append("")
+                        continue
+
+                    value = row.get(field_name)
+                    key.append("" if value is None else str(value))
+
+                distinct_documents.add(tuple(key))
+
+            deklar_row[target_field] = Decimal(len(distinct_documents))
+
     if "vat_due" in deklar_row and "vat_refundable" in deklar_row:
         delta = _to_decimal(deklar_row.get("sales_total_vat")) - _to_decimal(deklar_row.get("total_tax_credit"))
         deklar_row["vat_due"] = max(delta, Decimal("0"))
