@@ -44,12 +44,21 @@ def normalize_ledger(
         "company_vat",
         "counterparty_vat",
         "document_type",
-        "document_number",
         "document_date",
         "balance",
         "tax_tag_ids",
     ]
     missing_mappings = [key for key in required if not isinstance(ledger_columns.get(key), str)]
+    document_number_mapping = next(
+        (
+            key
+            for key in ("sales_doc_number", "document_number", "purchase_doc_number")
+            if isinstance(ledger_columns.get(key), str)
+        ),
+        None,
+    )
+    if document_number_mapping is None:
+        missing_mappings.append("document_number")
     if missing_mappings:
         raise ValueError(
             "ledger_columns is missing required mapping(s): " + ", ".join(missing_mappings)
