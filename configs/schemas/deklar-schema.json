@@ -153,7 +153,7 @@
         {
             "id": 11,
             "code": "01-12",
-            "internal_name": "sales_base_intra_community_and_82",
+            "internal_name": "sales_base_intra_community_acq",
             "name_bg": "ДО на ВОП и ДО на получени доставки по чл.82, ал.2-6",
             "start_pos": 212,
             "width_guess": 15,

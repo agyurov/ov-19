@@ -38,6 +38,101 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
+		{
+            "target_field": "sales_base_20",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_20"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
+		{
+            "target_field": "sales_vat_20",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "vat_20"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
+		{
+            "target_field": "sales_base_intra_community_acq",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_intra_community_acq"
+                    },
+					{
+                        "table": "prodagbi",
+                        "field": "base_reverse_charge_82"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
+		{
+            "target_field": "sales_base_exempt",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_exempt"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
+		{
+            "target_field": "sales_vat_intra_community_and_82",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "vat_intra_community_and_82"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
+		{
+            "target_field": "sales_base_services_21_2",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_services_21_2"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
+		{
+            "target_field": "sales_base_69_2_eu",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_69_2_eu"
+                    }
+                ]
+            },
+            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
+        },
         {
             "target_field": "sales_total_vat",
             "expression": {
@@ -52,7 +147,7 @@
             "note": "Fill 01-20 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
         {
-            "target_field": "total_tax_credit",
+            "target_field": "total_tax_credit", 
             "expression": {
                 "op": "sum",
                 "sources": [
@@ -64,7 +159,7 @@
             },
             "note": "!!!!Should be summing BG_TR_41.balance + (BG_TR_42.balance * BG_TR_33.balance) + BG_TR_43.balance. To be fixed later"
         },
-        {
+		{
             "target_field": "purchases_base_full_credit",
             "expression": {
                 "op": "sum",
@@ -77,7 +172,7 @@
             },
             "note": "Слагамае purchases_base_full_credit"
         },
-        {
+		{
             "target_field": "purchases_base_and_vat_no_credit",
             "expression": {
                 "op": "sum",
@@ -90,7 +185,7 @@
             },
             "note": "xxxx"
         },
-        {
+		{
             "target_field": "purchases_vat_full_credit",
             "expression": {
                 "op": "sum",
