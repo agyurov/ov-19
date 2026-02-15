@@ -10,6 +10,7 @@ from core.deklar import build_deklar_row
 from core.ledger import normalize_ledger, read_ledger_csv
 from core.mapping import map_ledger_to_tax_tables
 from core.vies import build_vies_data, write_vies_csv, write_vies_txt
+from core.version import APP_VERSION
 from core.writer import (
     write_csv_tables,
     write_deklar_csv,
@@ -152,6 +153,7 @@ def run_vattool(
     ]
 
     summary_lines = [
+        f"app_version: {APP_VERSION}",
         f"company_vat: {ledger_result.company_vat}",
         f"tax_period: {tax_period}",
         f"submitter_person: {submitter_person}",

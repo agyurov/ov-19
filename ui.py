@@ -8,6 +8,7 @@ from tkinter import filedialog, messagebox
 
 from core.config_loader import ConfigError
 from core.default_configs import restore_default_configs
+from core.version import APP_NAME, APP_VERSION
 from main import run_vattool
 
 
@@ -30,7 +31,8 @@ def _open_output_folder(path: str) -> None:
 class VATToolUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("VATTool v19")
+        self.app_title = f"{APP_NAME} v{APP_VERSION}"
+        self.root.title(self.app_title)
 
         self.input_csv_var = tk.StringVar()
         self.output_root_var = tk.StringVar(value=str(_default_output_root()))
@@ -43,21 +45,23 @@ class VATToolUI:
         frame = tk.Frame(self.root, padx=12, pady=12)
         frame.grid(row=0, column=0, sticky="nsew")
 
-        tk.Label(frame, text="Input ledger CSV:").grid(row=0, column=0, sticky="w", pady=(0, 6))
-        tk.Entry(frame, textvariable=self.input_csv_var, width=60).grid(row=1, column=0, sticky="we", padx=(0, 8))
-        tk.Button(frame, text="Browse...", command=self._browse_input).grid(row=1, column=1, sticky="e")
+        tk.Label(frame, text=self.app_title).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
-        tk.Label(frame, text="Output root folder:").grid(row=2, column=0, sticky="w", pady=(10, 6))
-        tk.Entry(frame, textvariable=self.output_root_var, width=60).grid(row=3, column=0, sticky="we", padx=(0, 8))
-        tk.Button(frame, text="Browse...", command=self._browse_output).grid(row=3, column=1, sticky="e")
+        tk.Label(frame, text="Input ledger CSV:").grid(row=1, column=0, sticky="w", pady=(0, 6))
+        tk.Entry(frame, textvariable=self.input_csv_var, width=60).grid(row=2, column=0, sticky="we", padx=(0, 8))
+        tk.Button(frame, text="Browse...", command=self._browse_input).grid(row=2, column=1, sticky="e")
 
-        tk.Label(frame, text="Submitter person (optional):").grid(row=4, column=0, sticky="w", pady=(10, 6))
-        tk.Entry(frame, textvariable=self.submitter_person_var, width=60).grid(row=5, column=0, columnspan=2, sticky="we")
+        tk.Label(frame, text="Output root folder:").grid(row=3, column=0, sticky="w", pady=(10, 6))
+        tk.Entry(frame, textvariable=self.output_root_var, width=60).grid(row=4, column=0, sticky="we", padx=(0, 8))
+        tk.Button(frame, text="Browse...", command=self._browse_output).grid(row=4, column=1, sticky="e")
 
-        tk.Label(frame, text="Submitter EGN (optional):").grid(row=6, column=0, sticky="w", pady=(10, 6))
-        tk.Entry(frame, textvariable=self.submitter_egn_var, width=60).grid(row=7, column=0, columnspan=2, sticky="we")
+        tk.Label(frame, text="Submitter person (optional):").grid(row=5, column=0, sticky="w", pady=(10, 6))
+        tk.Entry(frame, textvariable=self.submitter_person_var, width=60).grid(row=6, column=0, columnspan=2, sticky="we")
 
-        tk.Button(frame, text="Run", command=self._run).grid(row=8, column=0, columnspan=2, pady=(14, 0), sticky="we")
+        tk.Label(frame, text="Submitter EGN (optional):").grid(row=7, column=0, sticky="w", pady=(10, 6))
+        tk.Entry(frame, textvariable=self.submitter_egn_var, width=60).grid(row=8, column=0, columnspan=2, sticky="we")
+
+        tk.Button(frame, text="Run", command=self._run).grid(row=9, column=0, columnspan=2, pady=(14, 0), sticky="we")
 
         frame.columnconfigure(0, weight=1)
 
