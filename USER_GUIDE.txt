@@ -1,0 +1,34 @@
+VATTool 19 - Quick User Guide
+=============================
+
+What this tool does
+- Input: one ledger CSV export file for a single VAT period.
+- Optional input: submitter person and submitter EGN.
+- Output: VAT declaration files (CSV/TXT), VIES files (CSV/TXT), purchase/sales tables, run summary, and a copy of the original input file.
+
+How to use the app (UI)
+1) Open VATTool 19.
+2) In "Input ledger CSV", click "Browse..." and select your ledger CSV file.
+3) In "Output root folder", keep the default or choose another folder.
+4) (Optional) Fill "Submitter person" and "Submitter EGN".
+5) Click "Run".
+6) After completion, choose whether to open the output folder.
+
+Where output is saved
+- Each run is saved in:
+  vattool_19\<VAT>\<YYYY-MM>_runNNN
+- Example: vattool_19\BG123456789\2026-01_run003
+
+What "Warnings: YES" means
+- The run finished, but there are warning messages.
+- Open run_summary.txt in the run folder and review:
+  - warnings_count
+  - warnings_first_50
+
+Config files you can safely modify
+- configs/mappings/tax-grid-mapping.json
+- configs/mappings/document-type-mapping.json
+
+How to restore default configs
+- If config validation fails, the app asks: "Restore default configs and retry?"
+  Choose "Yes" to automatically reset all config files to defaults.
