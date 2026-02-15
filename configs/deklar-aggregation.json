@@ -65,6 +65,19 @@
             "note": "Total tax credit derived from pokupki (placeholder source field name; adjust to match pokupki schema)."
         },
         {
+            "target_field": "purchases_vat_full_credit",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "pokupki",
+                        "field": "vat_full_credit"
+                    }
+                ]
+            },
+            "note": "Total tax credit derived from pokupki (placeholder source field name; adjust to match pokupki schema)."
+        },
+        {
             "target_field": "vat_due",
             "expression": {
                 "op": "subtract",
