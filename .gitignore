@@ -4,3 +4,4 @@ smoke_test.py
 out_smoke/
 validate_txt_against_schema.py
 notes.txt
+vattool_19/
