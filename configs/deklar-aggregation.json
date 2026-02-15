@@ -62,7 +62,33 @@
                     }
                 ]
             },
-            "note": "Total tax credit derived from pokupki (placeholder source field name; adjust to match pokupki schema)."
+            "note": "!!!!Should be summing BG_TR_41.balance + (BG_TR_42.balance * BG_TR_33.balance) + BG_TR_43.balance. To be fixed later"
+        },
+        {
+            "target_field": "purchases_base_full_credit",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "pokupki",
+                        "field": "base_full_credit"
+                    }
+                ]
+            },
+            "note": "Слагамае purchases_base_full_credit"
+        },
+        {
+            "target_field": "purchases_base_and_vat_no_credit",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "pokupki",
+                        "field": "base_and_vat_no_credit"
+                    }
+                ]
+            },
+            "note": "xxxx"
         },
         {
             "target_field": "purchases_vat_full_credit",
