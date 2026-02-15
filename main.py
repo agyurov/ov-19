@@ -112,13 +112,17 @@ def run_vattool(
                 taxpayer_name = text
                 break
 
+    normalized_submitter_name = (submitter_person or "").strip()
+    normalized_submitter_egn = (submitter_egn or "").strip()
+    combined_submitter = normalized_submitter_egn + normalized_submitter_name
+
     deklar_row, deklar_warnings = build_deklar_row(
         mapping_result.pokupki_rows,
         mapping_result.prodagbi_rows,
         schemas,
         deklar_aggregation,
         taxpayer_name=taxpayer_name,
-        submitter_person=submitter_person,
+        submitter_person=combined_submitter,
     )
 
     tax_period = ledger_result.tax_periods[0]
