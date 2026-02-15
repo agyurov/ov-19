@@ -6,7 +6,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from core.config_loader import ConfigError
+from core.config_loader import ConfigError, load_all_configs
 from core.default_configs import restore_default_configs
 from core.version import APP_NAME, APP_VERSION
 from main import run_vattool
@@ -31,6 +31,8 @@ def _open_output_folder(path: str) -> None:
 class VATToolUI:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
+        self.base_dir = _base_dir()
+        self.config_dir = self.base_dir / "configs"
         self.app_title = f"{APP_NAME} v{APP_VERSION}"
         self.root.title(self.app_title)
 
@@ -119,6 +121,7 @@ class VATToolUI:
         submitter_egn: str,
     ) -> tuple[str, int]:
         try:
+            load_all_configs(str(self.config_dir))
             return run_vattool(
                 input_csv=input_csv,
                 output_root=output_root,
@@ -133,7 +136,8 @@ class VATToolUI:
             if not should_restore:
                 raise
 
-            restore_default_configs(str(_base_dir()))
+            restore_default_configs(str(self.base_dir))
+            load_all_configs(str(self.config_dir))
             return run_vattool(
                 input_csv=input_csv,
                 output_root=output_root,
