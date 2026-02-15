@@ -126,6 +126,7 @@ def _schema_field_names(schema: dict[str, Any]) -> list[str]:
         raise ValueError("Schema 'fields' must be a list")
 
     names: list[str] = []
+    # CSV header/order follows schema['fields'] list order.
     for field in fields:
         if not isinstance(field, dict):
             continue

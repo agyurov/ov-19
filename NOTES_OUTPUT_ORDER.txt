@@ -1,0 +1,77 @@
+Output column/field order investigation
+=====================================
+
+Scope investigated
+- core/writer.py (pokupki/prodagbi/deklar CSV+TXT writers)
+- core/vies.py (vies CSV+TXT writers)
+- configs/schemas/*-schema.json
+
+1) What dictates TXT order?
+---------------------------
+
+pokupki.txt, prodagbi.txt, deklar.txt (core/writer.py)
+- TXT lines are built by iterating schema["fields"] directly in _build_txt_line(...).
+- For each field, the value is written into a fixed slice based on start_pos and length.
+- Because output is fixed-width, the final visible "column" placement is dictated by start_pos/length, not by Python dict key order.
+- The iteration list is schema["fields"] from configs/schemas/*-schema.json.
+
+vies.txt (core/vies.py)
+- VIES fields start from vies_schema["fields"], then _group_fields_by_section(...) groups those field objects by section prefix in code (VHR/VDR/VTR/TTR/VIR), preserving encounter order from the schema list within each section.
+- _build_txt_line(...) writes each field by start_pos/length into a fixed buffer.
+- Section record order in the file is hard-coded: VHR, VDR, VTR, TTR, then all VIR rows.
+- So again, placement is fixed-width positional (start_pos/length), not dict insertion order.
+
+2) What structure is iterated?
+------------------------------
+
+- pokupki/prodagbi/deklar TXT:
+  iterates schema["fields"] list of field dicts.
+- vies TXT:
+  iterates section_fields["<SECTION>"] lists, where those lists were populated from vies_schema["fields"].
+- No TXT writer iterates row dict keys to decide field order.
+
+3) What dictates CSV order?
+---------------------------
+
+pokupki.csv, prodagbi.csv, deklar.csv (core/writer.py)
+- Column order comes from _schema_field_names(schema), which walks schema["fields"] in list order and collects each field["internal_name"].
+- csv.DictWriter(... fieldnames=columns ...) uses that columns list for header and row order.
+- Therefore CSV order is schema-list order (internal_name sequence in configs/schemas/*-schema.json).
+
+vies.csv (core/vies.py)
+- Column order is NOT read from schema.
+- It is a hard-coded Python list:
+  ["line_number", "counterparty_vat", "services_tax_base", "goods_tax_base", "triangular_tax_base"].
+- csv.DictWriter uses this fixed list directly.
+
+4) Is Python dictionary insertion order the source?
+----------------------------------------------------
+
+- Not for output column order in these files.
+- Writers fetch values by explicit field names from ordered lists (schema list or hard-coded list).
+- Dict insertion order only affects how dicts are stored internally; it is not used as the controlling iteration source for output layout here.
+
+Where to change order safely
+----------------------------
+
+- pokupki.csv / prodagbi.csv / deklar.csv:
+  Reorder entries in the corresponding configs/schemas/*-schema.json "fields" list.
+
+- pokupki.txt / prodagbi.txt / deklar.txt:
+  Keep in mind visible position is controlled by each field's start_pos/length in configs/schemas/*-schema.json.
+  Reordering list items alone usually will not move text if positions stay the same.
+
+- vies.txt:
+  Field positions come from configs/schemas/vies-schema.json start_pos/length.
+  Section order (VHR/VDR/VTR/TTR/VIR) is currently hard-coded in core/vies.py.
+
+- vies.csv:
+  Reorder the hard-coded columns list in core/vies.py (write_vies_csv).
+
+Pitfalls
+--------
+
+- Fixed-width TXT files are positional: changing start_pos/length changes layout and can break expected format.
+- Overlapping TXT field ranges can cause later-written fields (by iteration order) to overwrite earlier characters.
+- For schema-driven CSV files, reordering schema "fields" changes both header order and row serialization order.
+- For VIES, CSV and TXT use different ordering sources (hard-coded CSV list vs schema-positioned TXT sections), so changing one does not automatically change the other.
