@@ -16,5 +16,6 @@
   "document_type": "move_id/l10n_bg_document_type",
   "document_date": "invoice_date",
   "posting_date": "date",
-  "sales_doc_number": "move_name"
+  "sales_doc_number": "move_name",
+  "move_id": "move_id/.id"
 }
