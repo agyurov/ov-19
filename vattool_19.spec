@@ -1,24 +1,31 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_submodules
+import os
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_submodules
 
-project_dir = Path(__file__).resolve().parent
+project_dir = Path(os.getcwd())
 configs_dir = project_dir / "configs"
 guide_file = project_dir / "USER_GUIDE.txt"
+commit_file = project_dir / "BUILD_COMMIT.txt"
 
 hiddenimports = collect_submodules("core")
+
+datas = [
+    (str(configs_dir), "configs"),
+]
+
+if guide_file.exists():
+    datas.append((str(guide_file), "."))
+
+if commit_file.exists():
+    datas.append((str(commit_file), "."))
 
 a = Analysis(
     ["ui.py"],
     pathex=[str(project_dir)],
     binaries=[],
-    datas=[
-        (str(configs_dir), "configs"),
-        (str(guide_file), "."),
-    ] if guide_file.exists() else [
-        (str(configs_dir), "configs"),
-    ],
+    datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -39,7 +46,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,   # GUI app
+    console=False,
 )
 
 coll = COLLECT(
