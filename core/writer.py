@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 CSV_ENCODING = "utf-8"
 CSV_DELIMITER = ","
 CSV_NEWLINE = "\r\n"
+ISO_DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def write_csv_tables(
@@ -218,7 +220,11 @@ def _build_txt_line(
                 f"Invalid field positioning for {table_name}.{internal_name}: start_pos={start_pos}, length={length}"
             )
 
-        value = _to_txt_string(row.get(internal_name), field)
+        raw_value = row.get(internal_name)
+        if internal_name == "document_date":
+            raw_value = _format_txt_document_date(raw_value)
+
+        value = _to_txt_string(raw_value, field)
 
         if len(value) > length:
             warnings.append(
@@ -264,6 +270,14 @@ def _to_txt_string(value: Any, field: dict[str, Any]) -> str:
         return format(decimal_value, "f")
 
     return str(value)
+
+
+def _format_txt_document_date(value: Any) -> Any:
+    # Format date for TXT: dd/mm/yyyy
+    if isinstance(value, str) and ISO_DATE_PATTERN.fullmatch(value):
+        year, month, day = value.split("-")
+        return f"{day}/{month}/{year}"
+    return value
 
 
 def _schema_newline(value: Any) -> str:
