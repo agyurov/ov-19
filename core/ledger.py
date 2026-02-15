@@ -41,6 +41,7 @@ def normalize_ledger(
     warnings: list[str] = []
 
     required = [
+        "move_id",
         "company_vat",
         "counterparty_vat",
         "document_type",
@@ -80,6 +81,10 @@ def normalize_ledger(
 
     out_df = df.copy()
 
+    move_id_col = ledger_columns["move_id"]
+    if move_id_col not in out_df.columns:
+        raise ValueError(f"Required column for move id is missing: '{move_id_col}'.")
+
     tags_col = ledger_columns["tax_tag_ids"]
     out_df["_tax_tags"] = (
         out_df[tags_col].map(_parse_tax_tags) if tags_col in out_df.columns else [[] for _ in range(len(out_df))]
@@ -111,6 +116,8 @@ def normalize_ledger(
         column_name=tax_period_mapping,
     )
 
+    out_df = collapse_by_move_id(out_df, ledger_columns)
+
     tax_periods = sorted({d.strftime("%Y-%m") for d in out_df["_tax_period_date"]})
 
     global _LAST_NORMALIZED_DF
@@ -122,6 +129,58 @@ def normalize_ledger(
         tax_periods=tax_periods,
         warnings=warnings,
     )
+
+
+def collapse_by_move_id(df: pd.DataFrame, ledger_columns: dict[str, Any]) -> pd.DataFrame:
+    move_id_col = ledger_columns.get("move_id")
+    if not isinstance(move_id_col, str) or not move_id_col.strip():
+        raise ValueError("ledger_columns is missing required mapping(s): move_id")
+    if move_id_col not in df.columns:
+        raise ValueError(f"Required column for move id is missing: '{move_id_col}'.")
+
+    scalar_columns = {
+        value
+        for value in ledger_columns.values()
+        if isinstance(value, str) and value and value in df.columns
+    }
+
+    collapsed_rows: list[pd.Series] = []
+    grouped = df.groupby(move_id_col, dropna=False, sort=False)
+
+    for _, group in grouped:
+        row = group.iloc[0].copy()
+
+        for column_name in scalar_columns:
+            row[column_name] = _first_non_empty_in_group(group[column_name])
+
+        row["_document_date"] = _first_non_null_in_group(group["_document_date"]) if "_document_date" in group else None
+        row["_tax_period_date"] = _first_non_null_in_group(group["_tax_period_date"]) if "_tax_period_date" in group else None
+
+        tag_set: set[str] = set()
+        tag_amounts: dict[str, Decimal] = {}
+        total_balance = Decimal("0")
+
+        for _, source_row in group.iterrows():
+            tags = _parse_existing_tags(source_row.get("_tax_tags"))
+            tag_set.update(tags)
+
+            balance = source_row.get("_balance")
+            if isinstance(balance, Decimal):
+                line_balance = balance
+                total_balance += line_balance
+            else:
+                line_balance = Decimal("0")
+
+            for tag in tags:
+                tag_amounts[tag] = tag_amounts.get(tag, Decimal("0")) + line_balance
+
+        row["_tax_tags"] = sorted(tag_set)
+        row["_tag_amounts"] = dict(sorted(tag_amounts.items()))
+        row["_balance"] = total_balance
+
+        collapsed_rows.append(row)
+
+    return pd.DataFrame(collapsed_rows).reset_index(drop=True)
 
 
 def write_input_copies(original_path: str, output_folder: str) -> tuple[str, str]:
@@ -153,6 +212,30 @@ def _first_non_blank(series: pd.Series) -> str:
         if text:
             return text
     return ""
+
+
+def _first_non_empty_in_group(series: pd.Series) -> str:
+    for value in series.tolist():
+        text = str(value).strip()
+        if text:
+            return text
+    return ""
+
+
+def _first_non_null_in_group(series: pd.Series) -> Any:
+    for value in series.tolist():
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return value
+    return None
+
+
+def _parse_existing_tags(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(tag) for tag in value if str(tag)]
+    return []
 
 
 def _parse_tax_tags(value: Any) -> list[str]:

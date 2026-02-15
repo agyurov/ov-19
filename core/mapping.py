@@ -57,9 +57,7 @@ def map_ledger_to_tax_tables(
         if not tags:
             continue
 
-        balance = _as_decimal(row.get("_balance"))
-        if balance is None:
-            continue
+        tag_amounts = _as_tag_amounts(row.get("_tag_amounts"))
 
         known_tags = [tag for tag in tags if tag in tags_mapping]
         unknown_tags = sorted({tag for tag in tags if tag not in tags_mapping})
@@ -88,7 +86,8 @@ def map_ledger_to_tax_tables(
                     )
 
                 written_by[key] = tag
-                amount = balance if target.sign == 1 else -balance
+                tag_amount = tag_amounts.get(tag, Decimal("0"))
+                amount = tag_amount if target.sign == 1 else -tag_amount
                 row_accumulators[target.table][target.amount_column] = amount
 
         if row_accumulators["pokupki"]:
@@ -259,18 +258,30 @@ def _as_tag_list(value: Any) -> list[str]:
     return []
 
 
+def _as_tag_amounts(value: Any) -> dict[str, Decimal]:
+    if not isinstance(value, dict):
+        return {}
+
+    parsed: dict[str, Decimal] = {}
+    for tag, amount in value.items():
+        tag_text = str(tag).strip()
+        if not tag_text:
+            continue
+        if isinstance(amount, Decimal):
+            parsed[tag_text] = amount
+        elif amount is None:
+            parsed[tag_text] = Decimal("0")
+        else:
+            parsed[tag_text] = Decimal(str(amount))
+
+    return parsed
+
+
 def _as_text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
 
-
-def _as_decimal(value: Any) -> Decimal | None:
-    if value is None:
-        return None
-    if isinstance(value, Decimal):
-        return value
-    return Decimal(str(value))
 
 
 def _normalize_document_type(value: Any) -> str:
