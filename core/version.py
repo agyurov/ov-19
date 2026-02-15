@@ -1,2 +1,2 @@
 APP_NAME = "VATTool 19"
-APP_VERSION = "0.0.1-test"
+APP_VERSION = "0.0.2"
