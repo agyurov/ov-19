@@ -19,10 +19,10 @@ TAX_BASE_COLUMNS = [
     "base_0_chapter3",
     "base_0_intra_community_supply",
     "base_0_other",
-    "base_services_21_2",
-    "base_69_2_eu",
-    "base_exempt",
-    "base_triangular",
+    # "base_services_21_2",
+    # "base_69_2_eu",
+    # "base_exempt",
+    # "base_triangular",
 ]
 
 VAT_COLUMNS = [
