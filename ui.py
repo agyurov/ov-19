@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -23,6 +24,12 @@ def _default_output_root() -> Path:
     return Path.home() / "vattool_19"
 
 
+def _prefs_path() -> Path:
+    prefs_dir = Path(os.environ.get("APPDATA", Path.home())) / "VATTool_19"
+    prefs_dir.mkdir(parents=True, exist_ok=True)
+    return prefs_dir / "user_prefs.json"
+
+
 def _open_output_folder(path: str) -> None:
     if os.name == "nt":
         os.startfile(path)
@@ -40,8 +47,44 @@ class VATToolUI:
         self.output_root_var = tk.StringVar(value=str(_default_output_root()))
         self.submitter_person_var = tk.StringVar()
         self.submitter_egn_var = tk.StringVar()
+        self.prefs_path = _prefs_path()
+
+        self._load_submitter_prefs()
 
         self._build_layout()
+
+    def _load_submitter_prefs(self) -> None:
+        if not self.prefs_path.exists():
+            return
+
+        try:
+            data = json.loads(self.prefs_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return
+
+        if not isinstance(data, dict):
+            return
+
+        submitter_person = data.get("submitter_person")
+        submitter_egn = data.get("submitter_egn")
+
+        if isinstance(submitter_person, str):
+            self.submitter_person_var.set(submitter_person)
+        if isinstance(submitter_egn, str):
+            self.submitter_egn_var.set(submitter_egn)
+
+    def _save_submitter_prefs(self, submitter_person: str, submitter_egn: str) -> None:
+        payload = {
+            "submitter_person": submitter_person,
+            "submitter_egn": submitter_egn,
+        }
+        try:
+            self.prefs_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
 
     def _build_layout(self) -> None:
         frame = tk.Frame(self.root, padx=12, pady=12)
@@ -104,6 +147,8 @@ class VATToolUI:
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("VATTool v19", f"Run failed:\n{exc}")
             return
+
+        self._save_submitter_prefs(submitter_person=submitter_person, submitter_egn=submitter_egn)
 
         warning_text = "Warnings: YES (see run_summary.txt)" if warnings_count > 0 else "Warnings: NO"
         open_folder = messagebox.askyesno(
