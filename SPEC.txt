@@ -1,0 +1,355 @@
+VATTool v1 – Requirements & Design Specification (Final Draft)
+=====================================================
+
+Date: 2026-02-14
+Scope: VATTool v1 (Odoo v19 ledger CSV → НАП monthly VAT outputs)
+
+This document is a standalone specification for VATTool v1. It captures the functional requirements,
+non-functional constraints, file/config contracts, validation rules, and the agreed transformation model.
+It is written to be understandable without prior conversational context.
+
+--------------------------------------------------------------------
+0) Glossary (short)
+--------------------------------------------------------------------
+- Ledger / input file: Odoo v19 exported accounting ledger in CSV format.
+- Tag: A value in the ledger column tax_tag_ids (can contain multiple comma-separated tags per row).
+- Mapping: Rules that route a ledger row’s balance into specific amount columns in Pokupki/Prodagbi.
+- Schemas: JSON definitions that define output columns, order, types, and TXT formatting metadata.
+- Outputs:
+  - pokupki (purchases journal) → pokupki.txt + debug CSV/XLSX
+  - prodagbi (sales journal) → prodagbi.txt + debug CSV/XLSX
+  - deklar (VAT return) → deklar.txt + debug CSV/XLSX (derived from pokupki+prodagbi)
+  - vies is out of scope for v1 (planned later)
+
+--------------------------------------------------------------------
+1) High-level purpose
+--------------------------------------------------------------------
+VATTool v1 is a Python application distributed as a Windows executable (.exe). It:
+- Takes one Odoo v19 ledger CSV file as input.
+- Generates Bulgarian VAT authority (НАП) reports for a period:
+  - pokupki.txt
+  - prodagbi.txt
+  - deklar.txt
+- Also generates CSV/XLSX equivalents of each output for debugging/inspection.
+- Uses user-editable JSON config files to control mapping and formatting.
+- Produces a run summary log and a short end-of-run UI summary popup.
+
+Design goals:
+- Deterministic and auditable outputs
+- Config-driven behavior (prefer config changes over code changes)
+- Clear, strict validation at startup and clear runtime errors for dangerous cases
+- Minimal UI and minimal “hand-holding” during processing, but unavoidable end summary
+
+--------------------------------------------------------------------
+2) Inputs and required ledger fields
+--------------------------------------------------------------------
+2.1 Input file type
+- Input ledger is supplied as CSV.
+- Extra columns are allowed (ignored by tool).
+- Headers are case-sensitive and preserved exactly as provided.
+- The tool uses only columns declared in ledger_columns_map.json.
+
+2.2 ledger_columns_map.json (explicit mapping of ALL used columns)
+- The tool must not rely on hard-coded ledger column names.
+- ledger_columns_map.json explicitly defines ALL ledger columns used by the program, including at least:
+  - company VAT (NOT counterparty VAT)
+  - counterparty VAT
+  - tax_period
+  - document identifiers (number/type/date)
+  - balance
+  - tax_tag_ids
+  - any additional fields needed to populate output non-amount columns
+
+Missing any mapped required input column is a FATAL error (run stops).
+
+2.3 Authoritative amount column
+- For v1, the tool uses ONLY the ledger’s balance column as authoritative amount input.
+- Debit/credit are ignored for calculation in v1.
+- Assumption (documented): balance is correctly signed and is the correct value for routing.
+- This assumption may be revisited after accountant confirmation.
+
+--------------------------------------------------------------------
+3) Output folder structure, versioning, and preservation of input
+--------------------------------------------------------------------
+3.1 Output root and structure
+Default output root: configurable in UI (default: a VATTool folder under the user profile documents).
+
+Folder structure (canonical):
+VATTool/
+  <CompanyVAT>/
+    <YYYY-MM>_v1/
+      input_original.csv
+      input_normalized.csv
+      pokupki.csv
+      pokupki.xlsx
+      pokupki.txt
+      prodagbi.csv
+      prodagbi.xlsx
+      prodagbi.txt
+      deklar.csv
+      deklar.xlsx
+      deklar.txt
+      run_summary.txt
+
+3.2 Versioning
+- For the same (CompanyVAT, period), the tool increments versions: _v1, _v2, _v3, ...
+- The tool must never overwrite an existing output folder.
+
+3.3 Multi-period runs
+- The tool deduces the reporting period from ledger data (tax_period).
+- If multiple distinct tax_period values exist in the input:
+  - The run proceeds (NOT fatal).
+  - A warning is recorded and shown in the end-of-run summary.
+  - The output folder name includes a visible marker: <YYYY-MM>_MULTI_PERIOD_vX
+  - run_summary.txt lists each detected tax_period and row counts.
+
+3.4 Input preservation
+To preserve forensic value and aid debugging, each run stores:
+- input_original.csv → byte-for-byte copy of the user-supplied file
+- input_normalized.csv → normalized version produced by the tool (e.g., consistent delimiter/encoding)
+
+Headers are preserved exactly (no trimming/lowercasing).
+
+--------------------------------------------------------------------
+4) Date handling (strict)
+--------------------------------------------------------------------
+4.1 Date parsing
+- Date parsing must succeed for 100% of rows.
+- If ANY row’s required date field cannot be parsed → FATAL error.
+- UI must offer a simple Date Format dropdown with:
+  - Auto (default)
+  - a short whitelist of explicit formats (3–5 common formats)
+
+4.2 Auto detection rule
+- Auto format detection is accepted only if it successfully parses 100% of relevant rows.
+- If Auto fails, user must pick a format and rerun.
+
+Error messaging:
+- On failure, error must show the first few (e.g., 3) offending raw date strings.
+
+--------------------------------------------------------------------
+5) Output schemas and table construction
+--------------------------------------------------------------------
+5.1 Schema-driven outputs
+For each output (pokupki, prodagbi, deklar):
+- The tool constructs an empty DataFrame based on the schema definition (columns + order + types).
+- The tool populates rows into that schema-defined structure.
+- The tool never creates ad-hoc columns not present in schema.
+
+5.2 Field identifiers and human labels
+Each schema field provides:
+- code (official НАП code)
+- internal_name (machine key)
+- name_bg (human readable label)
+- type, required, length, alignment, decimals, is_amount, etc.
+
+Program logic uses internal_name as the canonical machine key.
+
+5.3 Defaults and types
+Defaults are type-driven:
+- strings → ""
+- numeric amounts → 0
+- dates → "" (unless later required otherwise by NAП spec)
+
+5.4 Rounding
+- Rounding rules are per-column, defined in schema (decimals).
+- No rounding occurs during transformation.
+- Rounding is applied only at export time (CSV/TXT generation).
+
+--------------------------------------------------------------------
+6) tax_grid_mapping.json (tag-based routing rules)
+--------------------------------------------------------------------
+6.1 Core principles (v1)
+- Mapping is strictly tag-based in v1.
+- No conditional logic (no account_id/journal/country conditions).
+- Mapping may only target pokupki and prodagbi (NOT deklar directly).
+
+6.2 Mapping keys and targets
+- Mapping references schema fields by internal_name.
+- Each tax_tag can map to multiple targets (multiple tables and/or multiple amount columns).
+- Each target includes a required human-readable label.
+
+Conceptual target fields (minimum):
+- table: "pokupki" | "prodagbi"
+- amount_column: <schema internal_name>
+- sign: +1 or -1
+- label: human-readable name (for accountants)
+- note: optional
+
+6.3 Validation rules (startup)
+- JSON structural validity (parseable) is required (fatal if not).
+- Every mapping target must reference a valid schema internal_name for its table (fatal if unknown).
+- Optional soft-validation: warn if a target field is not is_amount=true in schema.
+
+6.4 Collision rules
+FATAL collision: within a single ledger row, after all tags are applied, if two tags attempt to write to the same:
+- output table AND amount_column
+
+This must be detected at runtime and must stop the run with a clear error containing:
+- ledger row index
+- document identifiers (if available)
+- tags found
+- colliding (table, amount_column)
+
+Additionally, within a single tag’s own target list:
+- duplicate (table, amount_column) targets are invalid (fatal at startup).
+
+6.5 Unknown tags behavior
+If a ledger row contains tags that are not present in tax_grid_mapping.json:
+- Unknown tags generate warnings.
+- Warnings are aggregated per ledger row (NOT per tag spam):
+  - one warning per row listing unknown tags
+- If all tags in a row are unknown → no output row is produced for that row.
+
+Unknown tags are NOT fatal.
+
+--------------------------------------------------------------------
+7) Tag processing and intermediate model
+--------------------------------------------------------------------
+7.1 Tag normalization
+- tax_tag_ids may contain multiple comma-separated tags per ledger row.
+- Tags are:
+  - split on comma
+  - whitespace-trimmed
+  - sorted into a canonical order before applying mapping
+- Tag order in the source does not affect output determinism.
+
+7.2 Output row model (per ledger row, per output table)
+For each ledger row:
+- Apply mapping across all tags.
+- The ledger row may produce:
+  - 0 output rows, or
+  - 1 pokupki row, or
+  - 1 prodagbi row, or
+  - 1 pokupki row AND 1 prodagbi row (allowed)
+
+Within each produced output row:
+- multiple amount columns may be populated (as dictated by mapping targets).
+
+This model avoids creating multiple output rows per tag and keeps outputs compact.
+
+7.3 Output order
+- Output preserves ledger row order.
+- For rows that produce both pokupki and prodagbi, each table maintains ledger order independently.
+
+--------------------------------------------------------------------
+8) Deklar generation (derived; config-driven aggregation)
+--------------------------------------------------------------------
+8.1 Source of truth
+- Deklar is derived strictly from pokupki and prodagbi outputs.
+- tax_grid_mapping.json must not target deklar directly.
+
+8.2 Config-driven Deklar aggregation
+- Deklar aggregation rules must be defined in a JSON config (not hard-coded).
+- Aggregation config references source fields by internal_name.
+- Aggregation config must be declarative (formula-like), not a mini programming language:
+  - sums, differences, and simple expressions only
+  - no arbitrary code execution
+
+8.3 Validation (startup)
+- All referenced source columns must exist in the referenced schemas (fatal if unknown).
+- Unsupported operators/structure is fatal.
+
+8.4 Document counts (provisional assumption)
+Deklar fields:
+- sales_document_count (00-05)
+- purchases_document_count (00-06)
+
+Provisional v1 default (until accountant confirmation):
+- Count distinct documents in prodagbi/pokupki respectively.
+- Distinct document key default:
+  (document_type, document_number, document_date, counterparty_vat)
+
+Tool behavior:
+- Compute counts using the above rule.
+- Add a warning note in run_summary.txt that this logic is assumed and awaiting confirmation.
+
+--------------------------------------------------------------------
+9) Validation philosophy and error handling
+--------------------------------------------------------------------
+9.1 Startup validation (configs)
+At program start, validate:
+- All JSON config files parse successfully (fatal on parse error).
+- Config type and config_version supported (fatal if not).
+- Schema files:
+  - uniqueness of internal_name
+  - structural sanity (field lists, required keys)
+- Mapping references:
+  - schema internal_name existence (fatal)
+  - duplicates within tag targets (fatal)
+- Deklar aggregation config references valid fields (fatal)
+
+9.2 Runtime validation (data-driven)
+- Collision detection within a ledger row is fatal.
+- Unknown tags are warnings (per-row aggregation).
+- Multi-period detection is a warning with output folder marking.
+
+9.3 Warning presentation
+- No mid-run babysitting.
+- End-of-run popup must display:
+  - warning count (unavoidable)
+  - top warning categories with counts
+  - actions:
+    - open output folder
+    - open run_summary.txt
+
+Warnings are “silent” during processing but must be visible at the end.
+
+--------------------------------------------------------------------
+10) Config versioning (mandatory)
+--------------------------------------------------------------------
+Each config JSON file must include:
+- config_type (string)
+- config_version (integer, starting at 1)
+
+Tool behavior:
+- verify expected config_type per file
+- verify supported config_version
+- fatal error if mismatch or unsupported version
+
+--------------------------------------------------------------------
+11) UI requirements (minimal, practical)
+--------------------------------------------------------------------
+- Simple Tkinter UI.
+- User selects input ledger file.
+- User chooses output root folder (with default).
+- User chooses date parsing mode:
+  - Auto
+  - Explicit formats (short list)
+- UI shows completion summary and warning counts.
+- Profiles: may exist (not fully specified in this draft), but config files remain user-editable.
+
+Note: Company folder naming uses company VAT from ledger, not counterparty VAT.
+
+--------------------------------------------------------------------
+12) Out of scope for v1
+--------------------------------------------------------------------
+- VIES output (planned later)
+- Conditional mapping logic (account/journal/country rules)
+- Debit/credit-based balance validation
+- Advanced UI workflows
+
+--------------------------------------------------------------------
+Appendix A – Original initial requirement notes (verbatim-ish summary)
+--------------------------------------------------------------------
+The original vision for the tool (early draft) included:
+- A program that takes an Odoo v19 accounting ledger (CSV) and creates monthly НАП reports:
+  pokupki.txt, prodagbi.txt, deklar.txt, vies.txt.
+- Debug outputs: CSV/XLSX versions of the tables for Excel inspection.
+- Distributed as a Windows EXE.
+- Simple, robust, modular code; “no fancy project structure”.
+- Main goal: split 1 ledger table into multiple output tables.
+- Output folders: versioning if output folder exists.
+- Copy input file into output folder; save intermediate/output tables.
+- Simple Tkinter UI for selecting input and entering scalar values; profiles stored locally.
+- Config files (user-editable):
+  - output schemas for each output table
+  - TXT formatting specs (padding/alignment)
+  - ledger column mapping (input column names to semantic names)
+  - tax tag / tax grid mapping defining routing and sign changes
+- Config files should be restorable if corrupted/deleted.
+- Date formats may vary; program/UI should assist in parsing/deduction.
+- Some “odd requirements” for output tables to be handled later during implementation.
+
+--------------------------------------------------------------------
+End of document.

@@ -6,6 +6,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from core.text_encoding import make_encodable
+
 
 CSV_ENCODING = "utf-8"
 CSV_DELIMITER = ","
@@ -191,7 +193,9 @@ def _write_txt_table(
 
             row_for_write = dict(row)
             row_for_write["journal_row_number"] = row_index
-            line = _build_txt_line(row_for_write, fields, line_length, table_name, row_index, warnings)
+            line = _build_txt_line(
+                row_for_write, fields, line_length, table_name, row_index, warnings, file_encoding
+            )
             txt_file.write(line)
             txt_file.write(newline)
 
@@ -203,6 +207,7 @@ def _build_txt_line(
     table_name: str,
     row_index: int,
     warnings: list[str],
+    file_encoding: str = "cp1251",
 ) -> str:
     buffer = [" "] * line_length
 
@@ -226,7 +231,9 @@ def _build_txt_line(
             raw_value = _format_txt_document_date(raw_value)
 
         value = _to_txt_string(raw_value, field)
+        value = _encodable_or_warn(value, file_encoding, f"{table_name}[{row_index}].{internal_name}", warnings)
 
+        # Transliterate before truncating so the field keeps its fixed width.
         if len(value) > length:
             warnings.append(
                 f"{table_name}[{row_index}].{internal_name}: value length {len(value)} exceeds field length {length}; truncated"
@@ -253,6 +260,14 @@ def _build_txt_line(
     if len(line) != line_length:
         raise ValueError(f"Line length mismatch for {table_name}[{row_index}]: {len(line)} != {line_length}")
     return line
+
+
+def _encodable_or_warn(value: str, file_encoding: str, location: str, warnings: list[str]) -> str:
+    converted, used_fallback = make_encodable(value, file_encoding)
+    if converted != value:
+        note = " (characters without a replacement written as ?)" if used_fallback else ""
+        warnings.append(f"{location}: '{value}' -> '{converted}'{note}")
+    return converted
 
 
 def _to_txt_string(value: Any, field: dict[str, Any]) -> str:

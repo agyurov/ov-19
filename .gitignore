@@ -6,4 +6,5 @@ validate_txt_against_schema.py
 notes.txt
 vattool_19/
 __pycache__/
-*.zip
+*.zipbuild/
+dist/

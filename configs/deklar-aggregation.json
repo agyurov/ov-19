@@ -1,7 +1,7 @@
 {
     "config_type": "deklar_aggregation",
-    "config_version": 1,
-    "description": "VATTool v1 deklar aggregation rules. Expressions are declarative and allow only sum and subtract.",
+    "config_version": 2,
+    "description": "VATTool deklar aggregation rules. Expressions are declarative and allow only sum and subtract. sales_total_tax_base (01-01), sales_total_vat (01-20), vat_due (01-50) and vat_refundable (01-60) are computed in core/deklar.py and are not configured here.",
     "document_count_rules": {
         "sales_document_count": {
             "source_table": "prodagbi",
@@ -26,19 +26,6 @@
     },
     "field_rules": [
         {
-            "target_field": "sales_total_tax_base",
-            "expression": {
-                "op": "sum",
-                "sources": [
-                    {
-                        "table": "prodagbi",
-                        "field": "total_tax_base"
-                    }
-                ]
-            },
-            "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
-        },
-		{
             "target_field": "sales_base_20",
             "expression": {
                 "op": "sum",
@@ -51,7 +38,7 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
-		{
+        {
             "target_field": "sales_vat_20",
             "expression": {
                 "op": "sum",
@@ -64,7 +51,7 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
-		{
+        {
             "target_field": "sales_base_intra_community_acq",
             "expression": {
                 "op": "sum",
@@ -73,7 +60,7 @@
                         "table": "prodagbi",
                         "field": "base_intra_community_acq"
                     },
-					{
+                    {
                         "table": "prodagbi",
                         "field": "base_reverse_charge_82"
                     }
@@ -81,7 +68,7 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
-		{
+        {
             "target_field": "sales_base_exempt",
             "expression": {
                 "op": "sum",
@@ -94,7 +81,7 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
-		{
+        {
             "target_field": "sales_vat_intra_community_and_82",
             "expression": {
                 "op": "sum",
@@ -107,7 +94,7 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
-		{
+        {
             "target_field": "sales_base_services_21_2",
             "expression": {
                 "op": "sum",
@@ -120,7 +107,7 @@
             },
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
-		{
+        {
             "target_field": "sales_base_69_2_eu",
             "expression": {
                 "op": "sum",
@@ -134,20 +121,7 @@
             "note": "Fill 01-01 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
         },
         {
-            "target_field": "sales_total_vat",
-            "expression": {
-                "op": "sum",
-                "sources": [
-                    {
-                        "table": "prodagbi",
-                        "field": "total_vat"
-                    }
-                ]
-            },
-            "note": "Fill 01-20 from prodagbi totals (placeholder source field name; adjust to match prodagbi schema)."
-        },
-        {
-            "target_field": "total_tax_credit", 
+            "target_field": "total_tax_credit",
             "expression": {
                 "op": "sum",
                 "sources": [
@@ -159,7 +133,7 @@
             },
             "note": "!!!!Should be summing BG_TR_41.balance + (BG_TR_42.balance * BG_TR_33.balance) + BG_TR_43.balance. To be fixed later"
         },
-		{
+        {
             "target_field": "purchases_base_full_credit",
             "expression": {
                 "op": "sum",
@@ -172,7 +146,7 @@
             },
             "note": "Слагамае purchases_base_full_credit"
         },
-		{
+        {
             "target_field": "purchases_base_and_vat_no_credit",
             "expression": {
                 "op": "sum",
@@ -185,7 +159,7 @@
             },
             "note": "xxxx"
         },
-		{
+        {
             "target_field": "purchases_vat_full_credit",
             "expression": {
                 "op": "sum",
@@ -199,54 +173,108 @@
             "note": "Total tax credit derived from pokupki (placeholder source field name; adjust to match pokupki schema)."
         },
         {
-            "target_field": "vat_due",
+            "target_field": "sales_base_9",
             "expression": {
-                "op": "subtract",
-                "left": {
-                    "op": "sum",
-                    "sources": [
-                        {
-                            "table": "prodagbi",
-                            "field": "total_vat"
-                        }
-                    ]
-                },
-                "right": {
-                    "op": "sum",
-                    "sources": [
-                        {
-                            "table": "pokupki",
-                            "field": "vat_full_credit"
-                        }
-                    ]
-                }
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_9"
+                    }
+                ]
             },
-            "note": "VAT due = sales_total_vat - total_tax_credit (must be >= 0; enforcement is runtime)."
+            "note": "Fill 01-13 from prodagbi.base_9."
         },
         {
-            "target_field": "vat_refundable",
+            "target_field": "sales_vat_9",
             "expression": {
-                "op": "subtract",
-                "left": {
-                    "op": "sum",
-                    "sources": [
-                        {
-                            "table": "prodagbi",
-                            "field": "total_vat"
-                        }
-                    ]
-                },
-                "right": {
-                    "op": "sum",
-                    "sources": [
-                        {
-                            "table": "pokupki",
-                            "field": "vat_full_credit"
-                        }
-                    ]
-                }
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "vat_9"
+                    }
+                ]
             },
-            "note": "VAT refundable uses same formula; runtime will place negative into refundable and 0 into due (implementation rule)."
+            "note": "Fill 01-24 from prodagbi.vat_9."
+        },
+        {
+            "target_field": "sales_base_0_chapter3",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_0_chapter3"
+                    }
+                ]
+            },
+            "note": "Fill 01-14 from prodagbi.base_0_chapter3."
+        },
+        {
+            "target_field": "sales_base_0_intra_community_supply",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_0_intra_community_supply"
+                    }
+                ]
+            },
+            "note": "Fill 01-15 from prodagbi.base_0_intra_community_supply."
+        },
+        {
+            "target_field": "sales_base_0_other",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "base_0_other"
+                    }
+                ]
+            },
+            "note": "Fill 01-16 from prodagbi.base_0_other."
+        },
+        {
+            "target_field": "sales_vat_private_use",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "prodagbi",
+                        "field": "vat_for_private_use"
+                    }
+                ]
+            },
+            "note": "Fill 01-23 from prodagbi.vat_for_private_use."
+        },
+        {
+            "target_field": "purchases_base_partial_credit",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "pokupki",
+                        "field": "base_partial_credit"
+                    }
+                ]
+            },
+            "note": "Fill 01-32 from pokupki.base_partial_credit."
+        },
+        {
+            "target_field": "purchases_vat_partial_credit",
+            "expression": {
+                "op": "sum",
+                "sources": [
+                    {
+                        "table": "pokupki",
+                        "field": "vat_partial_credit"
+                    }
+                ]
+            },
+            "note": "Fill 01-42 from pokupki.vat_partial_credit."
         }
     ]
 }

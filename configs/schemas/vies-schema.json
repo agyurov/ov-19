@@ -1,6 +1,6 @@
 {
     "config_type": "vies",
-    "config_version": 1,
+    "config_version": 2,
     "schema_name": "vies_schema",
     "file_encoding": "cp1251",
     "line_length": 373,
@@ -109,12 +109,11 @@
             "name_bg": "Пощенски код от адреса за кореспонденция на лицето, подаващо декларацията",
             "start_pos": 219,
             "width_guess": 4,
-            "type": "float64",
+            "type": "object",
             "required": true,
-            "alignment": "right",
+            "alignment": "left",
             "length": 4,
-            "align": "right",
-            "decimals": 0
+            "align": "left"
         },
         {
             "id": 9,
@@ -338,6 +337,29 @@
             "length": 7,
             "align": "left",
             "pattern": "MM/YYYY"
+        },
+        {
+            "code": "CHR-01",
+            "internal_name": "chr_section_code",
+            "name_bg": "Код на раздела (CHR)",
+            "start_pos": 1,
+            "type": "object",
+            "required": true,
+            "alignment": "left",
+            "length": 3,
+            "align": "left"
+        },
+        {
+            "code": "CHR-02",
+            "internal_name": "chr_record_count",
+            "name_bg": "Брой записи в раздел CHR",
+            "start_pos": 4,
+            "type": "float64",
+            "required": true,
+            "alignment": "right",
+            "length": 5,
+            "align": "right",
+            "decimals": 0
         }
     ]
 }

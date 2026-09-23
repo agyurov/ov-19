@@ -120,10 +120,6 @@ def build_deklar_row(
         delta = _to_decimal(deklar_row.get("sales_total_vat")) - _to_decimal(deklar_row.get("total_tax_credit"))
         deklar_row["vat_due"] = max(delta, Decimal("0"))
         deklar_row["vat_refundable"] = -min(delta, Decimal("0"))
-        if delta != Decimal("0"):
-            warnings.append(
-                "vat_due/vat_refundable recalculated from sales_total_vat - total_tax_credit"
-            )
 
     return deklar_row, warnings
 

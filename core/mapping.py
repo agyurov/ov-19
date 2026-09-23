@@ -45,8 +45,10 @@ def map_ledger_to_tax_tables(
     tax_grid_mapping: dict[str, Any],
     ledger_columns: dict[str, Any],
     schema_by_table: dict[str, dict[str, Any]],
+    document_type_mapping: dict[str, Any] | None = None,
 ) -> MappingResult:
     tags_mapping = tax_grid_mapping.get("tags", {})
+    document_type_map = (document_type_mapping or {}).get("map", {})
 
     pokupki_rows: list[dict[str, Any]] = []
     prodagbi_rows: list[dict[str, Any]] = []
@@ -63,10 +65,16 @@ def map_ledger_to_tax_tables(
         unknown_tags = sorted({tag for tag in tags if tag not in tags_mapping})
 
         if not known_tags:
+            warnings.append(
+                f"Document {_document_label(row, ledger_columns)}: SKIPPED, none of its tax tags "
+                f"{unknown_tags} are in tax-grid-mapping.json; it is missing from all outputs"
+            )
             continue
 
         if unknown_tags:
-            warnings.append(f"Row {row_index}: unknown tags: {unknown_tags}")
+            warnings.append(
+                f"Document {_document_label(row, ledger_columns)}: unknown tax tags {unknown_tags} ignored"
+            )
 
         row_accumulators: dict[str, dict[str, Decimal]] = {"pokupki": {}, "prodagbi": {}}
         written_by: dict[tuple[str, str], str] = {}
@@ -77,10 +85,8 @@ def map_ledger_to_tax_tables(
                 key = (target.table, target.amount_column)
                 if key in written_by:
                     previous_tag = written_by[key]
-                    document_number = _as_text(row.get(ledger_columns.get("document_number", "")))
                     raise ValueError(
-                        "Collision in row "
-                        f"{row_index} (document_number={document_number}): "
+                        f"Collision in document {_document_label(row, ledger_columns)}: "
                         f"tags involved: [{previous_tag}, {tag}], "
                         f"conflicting column: {target.table}.{target.amount_column}"
                     )
@@ -98,6 +104,7 @@ def map_ledger_to_tax_tables(
                     source_row=row,
                     row_index=row_index,
                     ledger_columns=ledger_columns,
+                    document_type_map=document_type_map,
                     amount_values=row_accumulators["pokupki"],
                     warnings=warnings,
                 )
@@ -110,6 +117,7 @@ def map_ledger_to_tax_tables(
                 source_row=row,
                 row_index=row_index,
                 ledger_columns=ledger_columns,
+                document_type_map=document_type_map,
                 amount_values=row_accumulators["prodagbi"],
                 warnings=warnings,
             )
@@ -138,6 +146,7 @@ def _build_output_row(
     ledger_columns: dict[str, Any],
     amount_values: dict[str, Decimal],
     warnings: list[str] | None = None,
+    document_type_map: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     output = _schema_defaults(schema)
 
@@ -156,11 +165,18 @@ def _build_output_row(
 
     raw_document_type = source_row.get(ledger_columns.get("document_type", ""))
     raw_document_type_text = _as_text(raw_document_type)
-    normalized_document_type = _normalize_document_type(raw_document_type)
+    normalized_document_type = _normalize_document_type(raw_document_type, document_type_map or {})
     output["document_type"] = normalized_document_type
 
-    if warnings is not None and not re.match(r"^(\d{2})", raw_document_type_text):
-        warnings.append(f"Row {row_index}: unrecognized document_type '{raw_document_type}'")
+    if (
+        warnings is not None
+        and raw_document_type_text not in (document_type_map or {})
+        and not re.match(r"^(\d{2})", raw_document_type_text)
+    ):
+        warnings.append(
+            f"Document {_document_label(source_row, ledger_columns)}: "
+            f"unrecognized document_type '{raw_document_type}'"
+        )
 
     output["document_number"] = _resolve_document_number(
         source_row=source_row,
@@ -283,11 +299,26 @@ def _as_text(value: Any) -> str:
     return str(value).strip()
 
 
+def _document_label(row: pd.Series, ledger_columns: dict[str, Any]) -> str:
+    """Describe a ledger document the way the accountant sees it in Odoo."""
+    parts = []
+    for key in ("sales_move_name", "purchase_ref", "partner_name"):
+        column = ledger_columns.get(key)
+        if isinstance(column, str) and column:
+            value = _as_text(row.get(column))
+            if value and value not in parts:
+                parts.append(value)
+    return " / ".join(parts) or "(no number)"
 
-def _normalize_document_type(value: Any) -> str:
+
+
+def _normalize_document_type(value: Any, document_type_map: dict[str, str]) -> str:
     text = _as_text(value)
     if not text:
         return ""
+
+    if text in document_type_map:
+        return document_type_map[text].strip()
 
     match = re.match(r"^(\d{2})", text)
     if match:

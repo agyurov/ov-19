@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
-import warnings
 from pathlib import Path
 from typing import Any
 
-SUPPORTED_CONFIG_VERSION = 1
+# Program-owned configs get a new version when their bundled default changes, so
+# outdated copies next to the exe are replaced (see core/default_configs.py).
+SUPPORTED_CONFIG_VERSIONS: dict[str, int] = {
+    "deklar_aggregation": 2,
+    "vies": 2,
+}
+DEFAULT_CONFIG_VERSION = 1
 REQUIRED_SCHEMA_FIELD_KEYS = {"internal_name", "type", "required"}
 
 class ConfigError(Exception):
@@ -18,6 +23,7 @@ def load_all_configs(config_root: str) -> dict[str, Any]:
         raise ConfigError(f"Config root does not exist or is not a directory: {config_root}")
 
     loaded_by_type = _load_and_validate_jsons(root)
+    config_warnings: list[str] = []
 
     schema_by_table = _collect_schemas(loaded_by_type)
     _validate_schema_content(schema_by_table)
@@ -26,7 +32,10 @@ def load_all_configs(config_root: str) -> dict[str, Any]:
     ledger_columns = _get_single_config(loaded_by_type, "ledger_columns")
     deklar_aggregation = _get_single_config(loaded_by_type, "deklar_aggregation")
 
-    _validate_tax_grid_mapping(tax_grid_mapping, schema_by_table)
+    document_type_mapping = _get_single_config(loaded_by_type, "document_type_mapping")
+
+    _validate_tax_grid_mapping(tax_grid_mapping, schema_by_table, config_warnings)
+    _validate_document_type_mapping(document_type_mapping)
     _validate_ledger_columns(ledger_columns)
     _validate_deklar_aggregation(deklar_aggregation, schema_by_table)
 
@@ -35,8 +44,10 @@ def load_all_configs(config_root: str) -> dict[str, Any]:
         "mappings": {
             "tax_grid": tax_grid_mapping,
             "ledger_columns": ledger_columns,
+            "document_type": document_type_mapping,
         },
         "deklar_aggregation": deklar_aggregation,
+        "warnings": config_warnings,
     }
 
 
@@ -58,10 +69,11 @@ def _load_and_validate_jsons(root: Path) -> dict[str, list[dict[str, Any]]]:
                 f"{json_path}: missing/invalid required key 'config_version' (int expected)"
             )
 
-        if config_version != SUPPORTED_CONFIG_VERSION:
+        supported_version = SUPPORTED_CONFIG_VERSIONS.get(config_type, DEFAULT_CONFIG_VERSION)
+        if config_version != supported_version:
             raise ConfigError(
                 f"{json_path}: unsupported config_version={config_version}; "
-                f"supported version is {SUPPORTED_CONFIG_VERSION}"
+                f"supported version is {supported_version}"
             )
 
         payload["_path"] = str(json_path)
@@ -189,6 +201,7 @@ def _schema_amount_field_names(schema_by_table: dict[str, dict[str, Any]]) -> di
 def _validate_tax_grid_mapping(
     tax_grid_mapping: dict[str, Any],
     schema_by_table: dict[str, dict[str, Any]],
+    config_warnings: list[str],
 ) -> None:
     tags = tax_grid_mapping.get("tags")
     if not isinstance(tags, dict):
@@ -244,11 +257,22 @@ def _validate_tax_grid_mapping(
                 )
 
             if amount_column not in amount_fields[table]:
-                warnings.warn(
+                config_warnings.append(
                     f"{tax_grid_mapping['_path']}: tags.{tag_code}.targets[{index}] references "
-                    f"'{amount_column}' in '{table}' which is not marked is_amount=true",
-                    stacklevel=2,
+                    f"'{amount_column}' in '{table}' which is not marked is_amount=true"
                 )
+
+
+def _validate_document_type_mapping(document_type_mapping: dict[str, Any]) -> None:
+    mapping = document_type_mapping.get("map")
+    if not isinstance(mapping, dict):
+        raise ConfigError(f"{document_type_mapping['_path']}: 'map' must be an object")
+
+    for source, target in mapping.items():
+        if not isinstance(target, str) or not target.strip():
+            raise ConfigError(
+                f"{document_type_mapping['_path']}: map['{source}'] must be a non-empty string"
+            )
 
 
 def _validate_deklar_aggregation(

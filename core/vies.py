@@ -6,10 +6,13 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from core.text_encoding import make_encodable
+
 
 CSV_ENCODING = "utf-8"
 CSV_DELIMITER = ","
 CSV_NEWLINE = "\r\n"
+SECTION_ORDER = ("VHR", "VDR", "VTR", "TTR", "VIR", "CHR")
 
 
 def build_vies_data(
@@ -65,7 +68,7 @@ def build_vies_data(
             "declarer_id": declarer_id,
             "declarer_name": declarer_name,
             "declarer_city": "",
-            "declarer_postal_code": Decimal("0"),
+            "declarer_postal_code": "",
             "declarer_address": "",
             "declarer_person_type": "",
         },
@@ -81,6 +84,11 @@ def build_vies_data(
             "vod_tax_base": Decimal("0"),
         },
         "VIR": vir_rows,
+        "CHR": {
+            "chr_section_code": "CHR",
+            # The NAP-accepted file has 0 here even with VIR lines; meaning not confirmed yet.
+            "chr_record_count": Decimal("0"),
+        },
     }
 
 
@@ -119,52 +127,48 @@ def write_vies_csv(vies_data: dict[str, Any], output_dir: str | Path) -> str:
     return str(vies_file)
 
 
-def write_vies_txt(vies_data: dict[str, Any], vies_schema: dict[str, Any], output_dir: str | Path) -> str:
+def write_vies_txt(
+    vies_data: dict[str, Any], vies_schema: dict[str, Any], output_dir: str | Path
+) -> tuple[str, list[str]]:
+    """Write vies.txt the way NAP accepts it.
+
+    Each record type has its own width (VHR 15, VDR 373, VTR 368, TTR 27, VIR 66,
+    CHR 8), records are separated by CRLF and the last line has no line ending.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    line_length = vies_schema.get("line_length")
     file_encoding = vies_schema.get("file_encoding") or "cp1251"
     newline = _schema_newline(vies_schema.get("newline"))
     fields = vies_schema.get("fields")
-
-    if not isinstance(line_length, int) or line_length <= 0:
-        raise ValueError("VIES schema line_length must be a positive integer")
     if not isinstance(fields, list):
         raise ValueError("VIES schema fields must be a list")
 
     section_fields = _group_fields_by_section(fields)
+    warnings: list[str] = []
+    lines: list[str] = []
+
+    for section_name in SECTION_ORDER:
+        section_data = vies_data.get(section_name)
+        rows = section_data if section_name == "VIR" else [section_data]
+        if not isinstance(rows, list):
+            raise ValueError(f"vies_data['{section_name}'] must be a list")
+
+        for row_number, row in enumerate(rows, start=1):
+            if not isinstance(row, dict):
+                raise ValueError(f"vies_data['{section_name}'] row is not a dict: {row!r}")
+            location = f"vies.{section_name}" + (f"[{row_number}]" if section_name == "VIR" else "")
+            lines.append(
+                _build_txt_line(row, section_fields[section_name], file_encoding, location, warnings)
+            )
+
     output_file = output_path / "vies.txt"
-
-    ordered_sections: list[tuple[str, Any]] = [
-        ("VHR", vies_data.get("VHR")),
-        ("VDR", vies_data.get("VDR")),
-        ("VTR", vies_data.get("VTR")),
-        ("TTR", vies_data.get("TTR")),
-    ]
-
-    vir_rows = vies_data.get("VIR")
-    if not isinstance(vir_rows, list):
-        raise ValueError("vies_data['VIR'] must be a list")
-
-    with output_file.open("w", encoding=file_encoding, newline="") as txt_file:
-        for section_name, section_row in ordered_sections:
-            if not isinstance(section_row, dict):
-                raise ValueError(f"vies_data['{section_name}'] must be a dict")
-            txt_file.write(_build_txt_line(section_row, section_fields[section_name], line_length))
-            txt_file.write(newline)
-
-        for vir_row in vir_rows:
-            if not isinstance(vir_row, dict):
-                raise ValueError(f"VIR row is not a dict: {vir_row!r}")
-            txt_file.write(_build_txt_line(vir_row, section_fields["VIR"], line_length))
-            txt_file.write(newline)
-
-    return str(output_file)
+    output_file.write_bytes(newline.join(lines).encode(file_encoding))
+    return str(output_file), warnings
 
 
 def _group_fields_by_section(fields: list[Any]) -> dict[str, list[dict[str, Any]]]:
-    grouped: dict[str, list[dict[str, Any]]] = {"VHR": [], "VDR": [], "VTR": [], "TTR": [], "VIR": []}
+    grouped: dict[str, list[dict[str, Any]]] = {section: [] for section in SECTION_ORDER}
 
     for field in fields:
         if not isinstance(field, dict):
@@ -183,8 +187,19 @@ def _group_fields_by_section(fields: list[Any]) -> dict[str, list[dict[str, Any]
     return grouped
 
 
-def _build_txt_line(row: dict[str, Any], fields: list[dict[str, Any]], line_length: int) -> str:
-    buffer = [" "] * line_length
+def _record_width(fields: list[dict[str, Any]]) -> int:
+    return max(field["start_pos"] - 1 + field["length"] for field in fields)
+
+
+def _build_txt_line(
+    row: dict[str, Any],
+    fields: list[dict[str, Any]],
+    file_encoding: str,
+    location: str,
+    warnings: list[str],
+) -> str:
+    width = _record_width(fields)
+    buffer = [" "] * width
 
     for field in fields:
         internal_name = field.get("internal_name")
@@ -194,7 +209,17 @@ def _build_txt_line(row: dict[str, Any], fields: list[dict[str, Any]], line_leng
             continue
 
         value = _to_txt_string(row.get(internal_name), field)
+        converted, used_fallback = make_encodable(value, file_encoding)
+        if converted != value:
+            note = " (characters without a replacement written as ?)" if used_fallback else ""
+            warnings.append(f"{location}.{internal_name}: '{value}' -> '{converted}'{note}")
+            value = converted
+
+        # Transliterate before truncating so the field keeps its fixed width.
         if len(value) > length:
+            warnings.append(
+                f"{location}.{internal_name}: value length {len(value)} exceeds field length {length}; truncated"
+            )
             value = value[:length]
 
         align = str(field.get("align") or "left").lower()
@@ -202,13 +227,12 @@ def _build_txt_line(row: dict[str, Any], fields: list[dict[str, Any]], line_leng
         padded = value.rjust(length, pad_char) if align == "right" else value.ljust(length, pad_char)
 
         start_index = start_pos - 1
-        end_index = start_index + length
-        if end_index > line_length:
-            raise ValueError(f"Field {internal_name} exceeds line length")
+        buffer[start_index : start_index + length] = list(padded)
 
-        buffer[start_index:end_index] = list(padded)
-
-    return "".join(buffer)
+    line = "".join(buffer)
+    if len(line) != width:
+        raise ValueError(f"{location}: line length {len(line)} != record width {width}")
+    return line
 
 
 def _to_txt_string(value: Any, field: dict[str, Any]) -> str:

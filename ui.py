@@ -166,7 +166,6 @@ class VATToolUI:
         submitter_egn: str,
     ) -> tuple[str, int]:
         try:
-            load_all_configs(str(self.config_dir))
             return run_vattool(
                 input_csv=input_csv,
                 output_root=output_root,

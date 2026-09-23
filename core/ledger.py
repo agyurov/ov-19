@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import csv
-import shutil
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
-
-
-_LAST_NORMALIZED_DF: pd.DataFrame | None = None
 
 
 @dataclass(slots=True)
@@ -22,13 +16,30 @@ class LedgerLoadResult:
     warnings: list[str]
 
 
-def read_ledger_csv(path: str) -> pd.DataFrame:
-    """Read a ledger CSV while preserving exact column names."""
+def read_ledger_csv(path: str) -> tuple[pd.DataFrame, list[str]]:
+    """Read a ledger CSV while preserving exact column names.
+
+    Odoo exports UTF-8. A file saved again from Excel is usually Windows-1251,
+    so that is tried next instead of failing the run.
+    """
+    try:
+        return _read_csv(path, "utf-8-sig"), []
+    except UnicodeDecodeError as exc:
+        warning = (
+            f"Input file is not valid UTF-8 ({exc.reason} at byte {exc.start}); "
+            "read it as Windows-1251 instead. Was it opened and saved in Excel? "
+            "Check names in the output for garbled letters."
+        )
+        return _read_csv(path, "cp1251"), [warning]
+
+
+def _read_csv(path: str, encoding: str) -> pd.DataFrame:
     return pd.read_csv(
         path,
         dtype=str,
         keep_default_na=False,
         na_filter=False,
+        encoding=encoding,
     )
 
 
@@ -120,9 +131,6 @@ def normalize_ledger(
 
     tax_periods = sorted({d.strftime("%Y-%m") for d in out_df["_tax_period_date"]})
 
-    global _LAST_NORMALIZED_DF
-    _LAST_NORMALIZED_DF = out_df
-
     return LedgerLoadResult(
         df=out_df,
         company_vat=company_vat,
@@ -183,29 +191,6 @@ def collapse_by_move_id(df: pd.DataFrame, ledger_columns: dict[str, Any]) -> pd.
     return pd.DataFrame(collapsed_rows).reset_index(drop=True)
 
 
-def write_input_copies(original_path: str, output_folder: str) -> tuple[str, str]:
-    """Write raw and normalized input copies to output_folder."""
-    output_dir = Path(output_folder)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    original_copy = output_dir / "input_original.csv"
-    normalized_copy = output_dir / "input_normalized.csv"
-
-    shutil.copyfile(original_path, original_copy)
-
-    df_to_write = _LAST_NORMALIZED_DF if _LAST_NORMALIZED_DF is not None else read_ledger_csv(original_path)
-    df_to_write.to_csv(
-        normalized_copy,
-        index=False,
-        encoding="utf-8",
-        sep=",",
-        lineterminator="\r\n",
-        quoting=csv.QUOTE_MINIMAL,
-    )
-
-    return str(original_copy), str(normalized_copy)
-
-
 def _first_non_blank(series: pd.Series) -> str:
     for value in series.tolist():
         text = str(value).strip()
@@ -248,12 +233,22 @@ def _parse_tax_tags(value: Any) -> list[str]:
 
 
 def _parse_balance(value: Any) -> Decimal | None:
-    text = str(value).strip().replace(" ", "")
+    text = str(value).strip().replace(" ", "").replace("\u00a0", "")
     if not text:
         return None
 
-    if "," in text and "." not in text:
+    if "," in text and "." in text:
+        # Whichever separator comes last is the decimal one: 1,234.56 or 1.234,56.
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif text.count(",") > 1:
+        text = text.replace(",", "")
+    elif "," in text:
         text = text.replace(",", ".")
+    elif text.count(".") > 1:
+        text = text.replace(".", "")
 
     try:
         return Decimal(text)

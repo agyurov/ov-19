@@ -1,34 +1,29 @@
-VATTool 19 - Quick User Guide
-=============================
+VATTool 19 - How to use
+=======================
 
-What this tool does
-- Input: one ledger CSV export file for a single VAT period.
-- Optional input: submitter person and submitter EGN.
-- Output: VAT declaration files (CSV/TXT), VIES files (CSV/TXT), purchase/sales tables, run summary, and a copy of the original input file.
+1. In Odoo, export the Journal Items for ONE month as a CSV file.
+   Do not open or save this file in Excel.
+2. Open VATTool 19 and click "Browse..." to pick the file.
+3. Fill in Submitter person and Submitter EGN (the tool remembers them).
+4. Click "Run". When it is done, click "Yes" to open the results.
 
-How to use the app (UI)
-1) Open VATTool 19.
-2) In "Input ledger CSV", click "Browse..." and select your ledger CSV file.
-3) In "Output root folder", keep the default or choose another folder.
-4) (Optional) Fill "Submitter person" and "Submitter EGN".
-5) Click "Run".
-6) After completion, choose whether to open the output folder.
+Where are my files?
+  Documents\vattool_19\<company VAT>\<month>_run001
+  Every run makes a new folder (run001, run002, ...). Old runs are kept.
+  The .txt files are for NAP. The .csv files are for checking in Excel.
 
-Where output is saved
-- Each run is saved in:
-  vattool_19\<VAT>\<YYYY-MM>_runNNN
-- Example: vattool_19\BG123456789\2026-01_run003
+"Warnings: YES"
+  Open run_summary.txt and read the list at the bottom:
+  - "SKIPPED": this document is NOT in any file. Tell Tony.
+  - a name change, like 'Légiközlekedési' -> 'Legikozlekedesi':
+    NAP cannot read accented letters, so the tool removed the accent
+    in the .txt files. Nothing to do.
+  - "truncated": the text was too long and was cut. Usually fine.
 
-What "Warnings: YES" means
-- The run finished, but there are warning messages.
-- Open run_summary.txt in the run folder and review:
-  - warnings_count
-  - warnings_first_50
+Something went wrong?
+  - "Config error": click "Yes" to restore the settings.
+  - Any other red error: send Tony a screenshot and the CSV file.
 
-Config files you can safely modify
-- configs/mappings/tax-grid-mapping.json
-- configs/mappings/document-type-mapping.json
-
-How to restore default configs
-- If config validation fails, the app asks: "Restore default configs and retry?"
-  Choose "Yes" to automatically reset all config files to defaults.
+Please do not
+  - run the tool from Program Files,
+  - change the files in the "configs" folder unless Tony asks you to.

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from core.config_loader import ConfigError, load_all_configs
 from core.deklar import build_deklar_row
+from core.default_configs import upgrade_outdated_configs
 from core.ledger import normalize_ledger, read_ledger_csv
 from core.mapping import map_ledger_to_tax_tables
 from core.vies import build_vies_data, write_vies_csv, write_vies_txt
@@ -80,14 +81,16 @@ def run_vattool(
     base_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
     config_dir = base_dir / "configs"
 
+    config_upgrades = upgrade_outdated_configs(str(base_dir))
     configs = load_all_configs(str(config_dir))
 
     schemas = configs["schemas"]
     ledger_columns = configs["mappings"]["ledger_columns"]
     tax_grid_mapping = configs["mappings"]["tax_grid"]
     deklar_aggregation = configs["deklar_aggregation"]
+    document_type_mapping = configs["mappings"]["document_type"]
 
-    df = read_ledger_csv(input_csv)
+    df, read_warnings = read_ledger_csv(input_csv)
     ledger_result = normalize_ledger(df, ledger_columns, date_mode, date_format)
 
     if len(ledger_result.tax_periods) != 1:
@@ -101,6 +104,7 @@ def run_vattool(
         tax_grid_mapping,
         ledger_columns,
         schemas,
+        document_type_mapping,
     )
 
     taxpayer_name = ""
@@ -132,7 +136,7 @@ def run_vattool(
     vies_data = build_vies_data(
         mapping_result.prodagbi_rows,
         reporting_period=reporting_period,
-        declarer_id="",
+        declarer_id=normalized_submitter_egn,
         declarer_name=submitter_person,
         registered_vat=ledger_result.company_vat,
         registered_name=taxpayer_name,
@@ -140,20 +144,31 @@ def run_vattool(
     )
 
     run_dir = make_run_dir(output_root, ledger_result.company_vat, tax_period)
-    shutil.copyfile(input_csv, run_dir / "input_original.csv")
+    try:
+        shutil.copyfile(input_csv, run_dir / "input_original.csv")
 
-    write_csv_tables(mapping_result.pokupki_rows, mapping_result.prodagbi_rows, schemas, run_dir)
-    _, txt_warnings = write_txt_tables(mapping_result.pokupki_rows, mapping_result.prodagbi_rows, schemas, run_dir)
-    write_deklar_csv(deklar_row, schemas, run_dir)
-    _, deklar_txt_warnings = write_deklar_txt(deklar_row, schemas, run_dir)
-    write_vies_csv(vies_data, run_dir)
-    write_vies_txt(vies_data, schemas["vies"], run_dir)
+        write_csv_tables(mapping_result.pokupki_rows, mapping_result.prodagbi_rows, schemas, run_dir)
+        _, txt_warnings = write_txt_tables(
+            mapping_result.pokupki_rows, mapping_result.prodagbi_rows, schemas, run_dir
+        )
+        write_deklar_csv(deklar_row, schemas, run_dir)
+        _, deklar_txt_warnings = write_deklar_txt(deklar_row, schemas, run_dir)
+        write_vies_csv(vies_data, run_dir)
+        _, vies_txt_warnings = write_vies_txt(vies_data, schemas["vies"], run_dir)
+    except BaseException:
+        # Never leave a half-written run folder that looks like a finished run.
+        shutil.rmtree(run_dir, ignore_errors=True)
+        raise
 
     all_warnings = [
+        *config_upgrades,
+        *configs["warnings"],
+        *read_warnings,
         *mapping_result.warnings,
         *txt_warnings,
         *deklar_warnings,
         *deklar_txt_warnings,
+        *vies_txt_warnings,
     ]
 
     summary_lines = [
